@@ -10,8 +10,7 @@ from unidecode import unidecode
 from parsel import Selector
 from urllib.parse import urlparse, urlunparse
 from ..schemas.search_schemas import CrawlerPostItem
-print(httpx.__version__)
-print(httpx.__file__)
+
 USER_AGENTS = [
     # Chrome desktop
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
@@ -190,7 +189,7 @@ async def get_request_data_instagram( keyword: str )  -> list[CrawlerPostItem]:
         response = requests.get(url=url_rq, headers=headers, cookies=cookies)
         if response.status_code != 200:  # Raise an error for bad responses
             print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
-            return []
+            return [],str(response.status_code)
         data_res = json.loads(response.text)
         #print(data_res)
         try:
@@ -198,12 +197,12 @@ async def get_request_data_instagram( keyword: str )  -> list[CrawlerPostItem]:
         except:
             list_post=[]
         if not list_post:
-            return []
+            return [],str(response.status_code)
         list_post_res = []
         for post in list_post:       
             item = get_data_post_hastag_ig_recent(post,keyword)
             list_post_res.append(item)
-        return list_post_res
+        return list_post_res,str(response.status_code)
     except requests.RequestException as e:
         raise Exception(f"Error fetching data from instagram: {str(e)}")
     
@@ -212,11 +211,11 @@ def handle_parse_data_threads(item_post,keyword):
                                 DATETIME_FORMAT)
     try:
         message = item_post["caption"]["text"]
-    except KeyError:
+    except:
         message = ""
     try:
-        post_image = item_post["media"]["image_versions2"]["candidates"][0]["url"]
-    except KeyError:
+        post_image = replace_ig_host(item_post["image_versions2"]["candidates"][0]["url"])
+    except:
         post_image = ""
     item = CrawlerPostItem(
             post_id=item_post["code"],
@@ -282,14 +281,14 @@ async def get_request_data_threads( keyword: str )  -> list[CrawlerPostItem]:
         'ps_l': '1',
         'ps_n': '1'
     }
-    print("httpx version:", httpx.__version__)
-    print("httpx file:", httpx.__file__)
+    
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=headers, cookies=cookies)
         #resp.raise_for_status()
+    print(f"INFO:{str(resp.status_code)}")
     if resp.status_code != 200:
         print(f"[ERROR] Failed to fetch data from Threads: {resp.status_code}")
-        return []
+        return [],str(resp.status_code)
     sel = Selector(text=resp.text)
     data_threads = sel.xpath(".//script[@type='application/json']/text()").getall()
     list_post_res = []
@@ -297,6 +296,8 @@ async def get_request_data_threads( keyword: str )  -> list[CrawlerPostItem]:
         try:
             if "searchResults" in data and "thread_items" in data:
                 data_json = json.loads(data)
+                with open("threads.json", "w", encoding="utf-8") as f:
+                    json.dump(data_json, f, ensure_ascii=False, indent=4)
                 data_posts = \
                     data_json["require"][0][3][0]["__bbox"]["require"][0][3][1]["__bbox"]["result"]["data"][
                         "searchResults"]["edges"]
@@ -309,9 +310,25 @@ async def get_request_data_threads( keyword: str )  -> list[CrawlerPostItem]:
             continue
 
     if not list_post_res:
-        return []
-    return list_post_res
+        return [],str(resp.status_code)
+    return list_post_res,str(resp.status_code)
 
+def tweet_id_to_timestamp(tweet_id: int) -> int:
+    """
+    Convert Twitter Snowflake ID (tweet ID) to Unix timestamp (in seconds).
+    """
+    twitter_epoch = 1288834974657  # in milliseconds
+    timestamp_ms = (tweet_id >> 22) + twitter_epoch
+    return timestamp_ms // 1000  # convert to seconds
+
+def tweet_id_to_datetime_str(tweet_id: int) -> str:
+    """
+    Convert Twitter Snowflake ID (tweet ID) to datetime string in '%Y-%m-%d %H:%M:%S' format.
+    """
+    twitter_epoch = 1288834974657  # in milliseconds
+    timestamp_ms = (tweet_id >> 22) + twitter_epoch
+    dt = datetime.utcfromtimestamp(timestamp_ms / 1000)
+    return dt.strftime(DATETIME_FORMAT)
 
 def handle_parse_data_x(entry,keyword):
     tweet_info = entry['content']['itemContent']['tweet_results']['result']
@@ -326,7 +343,7 @@ def handle_parse_data_x(entry,keyword):
     like_count = legacy.get('favorite_count', 0)
     reply_count = legacy.get('reply_count', 0)
     retweet_count = legacy.get('retweet_count', 0)
-    created_at = legacy.get('created_at', '')
+    
 
     author_username = user_info.get('screen_name', '')
     author_name = user_info.get('name', '')
@@ -337,11 +354,8 @@ def handle_parse_data_x(entry,keyword):
     except KeyError:
         post_image = ''
     # Convert thời gian
-    try:
-        timeFormat = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
-    except ValueError:
-        timeFormat = datetime.now()  # Nếu không parse được, dùng thời gian hiện tại
-    timeFormatStr = (timeFormat + timedelta(hours=7)).strftime(DATETIME_FORMAT)
+    created_at = tweet_id_to_timestamp(tweet_id)
+    timeFormatStr = tweet_id_to_datetime_str(tweet_id)
     item = CrawlerPostItem(
             post_id=tweet_id,
             post_type="x",
@@ -418,10 +432,10 @@ async def get_request_data_x( keyword: str )  -> list[CrawlerPostItem]:
         #resp.raise_for_status()
     if resp.status_code != 200:
         print(f"[ERROR] Failed to fetch data from X: {resp.status_code}")
-        return []
+        return [],str(resp.status_code)
     if resp.status_code == 429:
         print(f"[ERROR] Failed to fetch data from X: {resp.status_code}")
-        return []
+        return [],str(resp.status_code)
     data_res = json.loads(resp.text)
     instructions = data_res['data']['search_by_raw_query']['search_timeline']['timeline']['instructions']
     entries = []
@@ -432,7 +446,7 @@ async def get_request_data_x( keyword: str )  -> list[CrawlerPostItem]:
 
     if not entries:
         print("[ERROR] Không tìm thấy entries.")
-        return
+        return [],str(resp.status_code)
     list_post_res = []
     for entry in entries:
         try:
@@ -446,8 +460,8 @@ async def get_request_data_x( keyword: str )  -> list[CrawlerPostItem]:
     
 
     if not list_post_res:
-        return []
-    return list_post_res
+        return [],str(resp.status_code)
+    return list_post_res,str(resp.status_code)
 
 def decode_id_to_publishtime( video_id):
         try:
@@ -458,6 +472,7 @@ def decode_id_to_publishtime( video_id):
             return content_created
         except:
             return ""
+
 async def get_request_data_tiktok( keyword: str )  -> list[CrawlerPostItem]:
     random_did = random.randint(1241242141211411412, 7465151651135121111)
     keyword_new = keyword.replace(" ", "+")
@@ -492,7 +507,7 @@ async def get_request_data_tiktok( keyword: str )  -> list[CrawlerPostItem]:
         #resp.raise_for_status()
     if resp.status_code != 200:
         print(f"[ERROR] Failed to fetch data from X: {resp.status_code}")
-        return []
+        return [],str(resp.status_code)
     aweme_ids = re.findall(r'"aweme_id":\s*"(\d+)"', resp.text)
     list_post_res = []
     created_at = int(datetime.now().timestamp())
@@ -537,4 +552,172 @@ async def get_request_data_tiktok( keyword: str )  -> list[CrawlerPostItem]:
                     data_form_source=0,
                     )
                 list_post_res.append(item)
-    return list_post_res
+    return list_post_res,str(resp.status_code)
+
+def merge_text_and_first_image(content: list) -> tuple[str, str | None]:
+    """
+    - Gộp tất cả đoạn text từ content có type = 'text'
+    - Trả về thêm một URL ảnh đầu tiên (nếu có type = 'image')
+    """
+    merged_text = []
+    image_url = None
+
+    for item in content:
+        if item.get("type") == "text" and "text" in item:
+            merged_text.append(item["text"])
+        elif item.get("type") == "image" and not image_url:
+            media_list = item.get("media", [])
+            if media_list:
+                # Ưu tiên ảnh lớn nhất (sắp xếp theo width giảm dần)
+                sorted_media = sorted(media_list, key=lambda m: m.get("width", 0), reverse=True)
+                image_url = sorted_media[0].get("url")
+
+    full_text = "\n".join(merged_text).strip()
+    return full_text, image_url
+
+def get_data_post_search_tumblr(post,keyword):
+    
+    try:
+        post_id = post["id"]
+    except KeyError:
+        post_id = "get_id_error"
+    try:
+        post_url = post["postUrl"]
+    except KeyError:
+        post_url = "get_url_error"
+    try:
+        message,post_image = merge_text_and_first_image(post["content"])
+    except KeyError:
+        message = "get_message_error"
+        post_image = ""
+    try:
+        post_created_timestamp = post["timestamp"]
+        post_created = datetime.fromtimestamp(post_created_timestamp).strftime(DATETIME_FORMAT)
+    except:
+        post_created = "get_created_error"
+        post_created_timestamp = 0
+    try:
+        count_like = post["likeCount"]   
+    except:
+        count_like = 0
+    try:
+        count_share = post["noteCount"]   
+    except:
+        count_share = 0
+    try:
+        count_comments=post["replyCount"]   
+    except:
+        count_comments = 0
+    item = CrawlerPostItem(
+            post_id=post_id,
+            post_type="tumblr",
+            post_keyword=keyword,
+            post_url=post_url,
+            message=message,
+            type=0,
+            post_image= post_image,
+            post_created=post_created,
+            post_created_timestamp=post_created_timestamp,
+            post_raw="",
+            count_like=count_like,
+            count_share=count_share,
+            count_comments=count_comments,
+            comments="",
+            brand_id="",
+            object_id="",
+            service_id="",
+            parent_post_id="",
+            parent_object_id="",
+            parent_service_id="",
+            page_id="",
+            page_name="",
+            author_id='',
+            author_name='',
+            author_username='',
+            author_image='',
+            data_form_source=0,
+        )
+    return item
+async def get_request_data_tumblr( keyword: str )  -> list[CrawlerPostItem]:
+    """
+    Fetch data from a given URL with optional parameters.
+    
+    :keyword: The keyword to fetch data from instagram.
+    :return: Response object containing the fetched data.
+    """
+    keyword = unidecode(keyword).replace(" ", "").lower()
+    user_agent = random.choice(USER_AGENTS)
+    try:
+        url = f'https://www.tumblr.com/api/v2/timeline/search?limit=20&days=0&query={keyword}&mode=recent&timeline_type=post&skip_component=blog_search&reblog_info=true&query_source=search_box_typed_query&post_role=any&fields%5Bblogs%5D=%3Fadvertiser_name%2C%3Favatar%2C%3Fblog_view_url%2C%3Fcan_be_booped%2C%3Fcan_be_followed%2C%3Fcan_show_badges%2C%3Fdescription_npf%2C%3Ffollowed%2C%3Fis_adult%2C%3Fis_member%2Cname%2C%3Fprimary%2C%3Ftheme%2C%3Ftitle%2C%3Ftumblrmart_accessories%2Curl%2C%3Fuuid%2C%3Fshare_following%2C%3Fshare_likes%2C%3Fask'
+
+        headers = {
+            "accept": "application/json;format=camelcase",
+            "accept-language": "en-us",
+            "authorization": "Bearer aIcXSOoTtqrzR8L8YEIOmBeW94c3FmbSNSWAUbxsny9KKx5VFh",
+            "cache-control": "no-cache",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referer": "https://www.tumblr.com/search/vietnam/recent?src=typed_query",
+            "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Microsoft Edge\";v=\"138\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent": user_agent,
+            "x-ad-blocker-enabled": "0",
+            "x-version": "redpop/3/0//redpop/"
+        }
+
+        cookies = {
+            "tz": "Etc%2FGMT-7",
+            "tmgioct": "fc573fbb7a05f52b6decce91",
+            "snacc": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImI1MDljNTEzODc2OGY3Y2YyZTgyN2UwNGIyN2U3ZTRjYmM3YmI5MTkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMDc0MTQ2MDM2MzAzLW04djEwZDF0ZGt2ZWxndjQybmpyczZwNmxjM3JrMnRjLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwiYXVkIjoiMTA3NDE0NjAzNjMwMy1tOHYxMGQxdGRrdmVsZ3Y0Mm5qcnM2cDZsYzNyazJ0Yy5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsInN1YiI6IjExMDc2MjcwMjc1MjI3ODE0NzA5MiIsImVtYWlsIjoiaGlldW5rYmJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImF0X2hhc2giOiJnOVhVYm5zNGdxWnhRSmhaNVRWZGpBIiwiaWF0IjoxNzUzMDgxNzA2LCJleHAiOjE3NTMwODUzMDZ9.AAyFC8YDj8eTb2sPAEv0AHgxHo3svvnrziDaznA1VGGEkXofBmq4AaB4fcTDYVpJmKwKIzAr5jG2tc5tGEQDWd4bzQpNXtAKAf5FugrwvLcG2fdaCfYj5uDuH8ONYJkHdgof8Px0Z4lbJ2dfP1KvAyPJBjA3b6XbZzWkC5eyST4ah5H1E2Y3Id43xTF8vqQgrURbkPZak68dQwvgQ424afEll2SBH4u0FC0wP0h4jN5iarrqgGZ1iUjZUMC7S14xz0f1voRaj5D9riqXzIsVgP4CfUvHpetohcrP0VHjm2sP-4Q2zeeq6MSICGVtCJabwAXrDqmueuuB-D19Sl-RsQ",
+            "devicePixelRatio": "1",
+            "documentWidth": "1897",
+            "sid": "aKxjoZcFy97YvW5Zz7FedhwpfKlcUo1TFTFrRASCjin7Ycvm7S.aeAXAtigoAOyOa8Wxbap8jMvE1xlNt7Q7ic1ZA6Tb638EA9Sc6",
+            "pfu": "395805680",
+            "logged_in": "1",
+            "cl_pref": "block",
+            "_li_dcdm_c": ".tumblr.com",
+            "_lc2_fpi": "ed972f83c03d--01k0nx2g69ztgy5m599kd7jewh",
+            "_lc2_fpi_meta": "%7B%22w%22%3A1753081790665%7D",
+            "_pubcid": "66a92971-44a9-415d-8e3b-f637f6d5e021",
+            "_pubcid_cst": "kSylLAssaw%3D%3D",
+            "_lr_retry_request": "true",
+            "_lr_env_src_ats": "false",
+            "panoramaId_expiry": "1753686596469",
+            "_cc_id": "7e7429cf933ecd7a1273dec4af9b513e",
+            "panoramaId": "d4fee835470b32418d9701f738304945a7023063e32d3c2057e2c22d096d2b97",
+            "pbjs-unifiedid": "%7B%22TDID%22%3A%2284d0f5da-7e3b-4473-92dc-0c53bf8d9dc0%22%2C%22TDID_LOOKUP%22%3A%22TRUE%22%2C%22TDID_CREATED_AT%22%3A%222025-06-21T07%3A09%3A56%22%7D",
+            "pbjs-unifiedid_cst": "kSylLAssaw%3D%3D",
+            "cto_bundle": "n8trA18lMkJOVElsa3lGMTdSdVJhVXI3eWNGUFhIbTBLZWQlMkZzVUc3TXhpR3VpTEJENk02WW0lMkZtJTJCczdvQng1VUhJWEFkQUZreG8wMmgwSGNxcGNaaGo3RE1GT1lKelclMkZyeWJGZmg5cXNyR3RjY3ZZb1l4MldZUTFVUnY1bmcxUXREWkRUNzZGWVp6U0hYb1ZvYVlDbTIwayUyRlh4bmclM0QlM0Q",
+            "cto_bidid": "qgBrHF9LYnFybkRLTEY0VDlXTFNyNDVjVFVuakhhRUZ3T2xoaHJxRzNDSGt0c3c5d2FrVHZGUlNBRzI5SHBNTnZyJTJGZ24yJTJGVGo1N0tSbTJ6ZlRVc3BNOFFtSCUyQlJ6a2c5VzRCcVZlUmx5bEs4Vkk2dyUzRA",
+            "cto_dna_bundle": "3oaWzl9KZHk5NnRxemlGVmZSaDU4c2g4eXdCdyUyQk9Tb29xN0dkUGx4WnNMMWRVbFo2QWQwZGNCc2ZIa0tLWGFQTEhPZ1VmOEIzT2xmQ0hiZ00xdXBsMjBNb2hBJTNEJTNE",
+            "search-displayMode": "2",
+            "__gads": "ID=9861e47007a9223e:T=1753081798:RT=1753082537:S=ALNI_MY_wqmATYw4j9reraxCtz0W2yfoLg",
+            "__gpi": "UID=0000116b2e9c12d6:T=1753081798:RT=1753082537:S=ALNI_MZUOVnUHTfVN2ekRpZ5k2jZuJI3fg",
+            "__eoi": "ID=b09c5137c3c1766d:T=1753081798:RT=1753082537:S=AA-Afjbjai6_xgdoTv6u9HxBERxI"
+        }
+
+        print(url)
+        response = requests.get(url=url, headers=headers, cookies=cookies)
+        if response.status_code != 200:  # Raise an error for bad responses
+            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            return [],str(response.status_code)
+        data_res = json.loads(response.text)
+        #print(data_res)
+        try:
+            list_post=data_res['response']['timeline']['elements']
+        except:
+            list_post=[]
+        if not list_post:
+            return [],str(response.status_code)
+        list_post_res = []
+        for post in list_post:       
+            item = get_data_post_search_tumblr(post,keyword)
+            list_post_res.append(item)
+        return list_post_res,str(response.status_code)
+    except requests.RequestException as e:
+        raise Exception(f"Error fetching data from instagram: {str(e)}")
+

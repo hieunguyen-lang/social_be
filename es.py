@@ -3,6 +3,7 @@ from app.helpers import request_get_data
 import asyncio
 
 async def main():
-    await request_get_data.get_request_data_instagram("vietnam")
+    a=await request_get_data.get_request_data_linkedin("đà%20nẵng")
+    print(a)
 
 asyncio.run(main())

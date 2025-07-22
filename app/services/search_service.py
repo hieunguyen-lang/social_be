@@ -55,29 +55,44 @@ async def searchSocial(filters):
         result_tiktok, status_tiktok = await request_get_data.get_request_data_tiktok(filters.get("keyword"))
     except:
         result_tiktok = []
-        status_tiktok= "Error fetching Instagram data"
+        status_tiktok= "Error fetching tiktok data"
     try:
         result_tumblr, status_tumblr = await request_get_data.get_request_data_tumblr(filters.get("keyword"))  
     except:
         result_tumblr = []
-        status_tumblr= "Error fetching Instagram data"
-    combined = result_instagram + result_threads + result_x + result_tiktok +result_tumblr
+        status_tumblr= "Error fetching tumblr data"
+
+    try:
+        result_linkedin, status_linkedin = await request_get_data.get_request_data_linkedin(filters.get("keyword"))  
+    except:
+        result_linkedin = []
+        status_linkedin= "Error fetching linkedin data"
+    combined = result_instagram + result_threads + result_x + result_tiktok +result_tumblr +result_linkedin
 
     combined.sort(key=lambda x: x.post_created_timestamp, reverse=True)
 
     username ="Social Crawler"
     content = (
         "📢 Social Crawler health logs!\n"
+        f"client_ip: {filters.get('client_ip')}\n"
+        f"===========================================\n"
         f"Result_instagram: {len(result_instagram)}\n"
         f"Status_instagram: {status_instagram}\n"
+        f"===========================================\n"
         f"Result_threads: {len(result_threads)}\n"
         f"Status_threads: {status_threads}\n"
+        f"===========================================\n"
         f"Result_x: {len(result_x)}\n"
         f"Status_x: {status_x}\n"
+        f"===========================================\n"
         f"Result_tiktok: {len(result_tiktok)}\n"
         f"Status_tiktok: {status_tiktok}\n"
+        f"===========================================\n"
         f"Result_tumblr: {len(result_tumblr)}\n"
         f"Status_tumblr: {status_tumblr}\n"
+        f"===========================================\n"
+        f"Result_linkedin: {len(result_linkedin)}\n"
+        f"Status_linkedin: {status_linkedin}\n"
         f"Total: {len(combined)}"
     )
     send_alert("https://discord.com/api/webhooks/1396778930232627220/rjLenkP2J1G3MaO7rFY-Y5_8KlMY0DU6sfW8oxNoyony18oFopVK2RUsgOQWuIvzCKyb",username,content)

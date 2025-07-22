@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status,Query,Response
+from fastapi import APIRouter, Depends, HTTPException, status,Query,Response,Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from ..database import get_db
@@ -21,13 +21,16 @@ router = APIRouter()
 
 @router.get("/",response_model=List[CrawlerPostItem], summary="Tìm kiếm bài viết trên mạng xã hội")
 async def searchSocial(
+    request: Request,  
     keyword: str = Query(None, description="Tìm kiếm keyword"),
 
     # current_user: User = Depends(get_current_active_user),
     # perm: bool = Depends(require_permission("bill:view"))
-):
+):  
+    client_ip = request.client.host
     filters = {
         "keyword": keyword,
+        "client_ip": client_ip
     }
     # Loại bỏ các giá trị None khỏi filters
     filters = {k: v for k, v in filters.items() if v is not None}

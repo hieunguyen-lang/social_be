@@ -511,11 +511,13 @@ async def get_request_data_tiktok( keyword: str )  -> list[CrawlerPostItem]:
     aweme_ids = re.findall(r'"aweme_id":\s*"(\d+)"', resp.text)
     list_post_res = []
     created_at = int(datetime.now().timestamp())
-
+    seen_post_ids = set()
     if aweme_ids:
         for video_id in aweme_ids:
             #print("[INFO] VIDEO ID: " + str(video_id))
-
+            if video_id in seen_post_ids:
+                continue
+            seen_post_ids.add(video_id)
             content_created = decode_id_to_publishtime(video_id)
             async with httpx.AsyncClient() as client:
                 url_detail=f'https://www.tiktok.com/oembed?url=https://www.tiktok.com/@username/video/{video_id}'
@@ -638,6 +640,7 @@ def get_data_post_search_tumblr(post,keyword):
             data_form_source=0,
         )
     return item
+
 async def get_request_data_tumblr( keyword: str )  -> list[CrawlerPostItem]:
     """
     Fetch data from a given URL with optional parameters.
@@ -721,3 +724,183 @@ async def get_request_data_tumblr( keyword: str )  -> list[CrawlerPostItem]:
     except requests.RequestException as e:
         raise Exception(f"Error fetching data from instagram: {str(e)}")
 
+
+def convert_id_to_timestamp( _id):
+        bin_num = bin(int(_id))[2:]
+        first_41_letters = bin_num[:41]
+        decimal_num = int(first_41_letters, 2)
+        return datetime.fromtimestamp(decimal_num/1000).strftime(DATETIME_FORMAT), int(decimal_num/1000)
+
+def extract_largest_image_url_from_vectorImage(vector_image: dict) -> str:
+    artifacts = vector_image.get("artifacts", [])
+    root_url = vector_image.get("rootUrl", "")
+    
+    if not artifacts or not root_url:
+        return ""
+
+    # Chọn artifact có width lớn nhất
+    largest_artifact = max(artifacts, key=lambda a: a.get("width", 0))
+    path_segment = largest_artifact.get("fileIdentifyingUrlPathSegment", "")
+    
+    return root_url + path_segment if path_segment else ""
+
+def get_data_post_search_linedin(post,keyword):
+    metadata = post.get("metadata", {})
+    try:
+        post_url = metadata["backendUrn"]
+        urn_split = post_url.split(":")
+        post_id = urn_split[-1]
+        post_created,post_created_timestamp = convert_id_to_timestamp(post_id)
+    except:
+        try:
+            post_url = metadata["shareUrn"]
+            urn_split = post_url.split(":")
+            post_id = urn_split[-1]
+            post_created,post_created_timestamp = convert_id_to_timestamp(post_id)
+        except:
+            post_id = "get_id_error"
+            post_url = "get_url_error"
+            post_created_timestamp = 0
+            post_created = "get_created_error"
+ 
+    try:
+        message = post["commentary"]['text']['text']
+    except KeyError:
+        message = "get_message_error"
+    try:
+        post_image = extract_largest_image_url_from_vectorImage(post["content"]['articleComponent']['smallImage']['attributes'][0]['detailData']['vectorImage'])
+    except:
+        post_image = ""
+    
+    try:
+        count_like = 0  
+    except:
+        count_like = 0
+    try:
+        count_share = 0  
+    except:
+        count_share = 0
+    try:
+        count_comments=0   
+    except:
+        count_comments = 0
+    item = CrawlerPostItem(
+            post_id=post_id,
+            post_type="linkedin",
+            post_keyword=keyword,
+            post_url=post_url,
+            message=message,
+            type=0,
+            post_image= post_image,
+            post_created=post_created,
+            post_created_timestamp=post_created_timestamp,
+            post_raw="",
+            count_like=count_like,
+            count_share=count_share,
+            count_comments=count_comments,
+            comments="",
+            brand_id="",
+            object_id="",
+            service_id="",
+            parent_post_id="",
+            parent_object_id="",
+            parent_service_id="",
+            page_id="",
+            page_name="",
+            author_id='',
+            author_name='',
+            author_username='',
+            author_image='',
+            data_form_source=0,
+        )
+    return item
+
+
+async def get_request_data_linkedin( keyword: str )  -> list[CrawlerPostItem]:
+    """
+    Fetch data from a given URL with optional parameters.
+    
+    :keyword: The keyword to fetch data from instagram.
+    :return: Response object containing the fetched data.
+    """
+    keyword = unidecode(keyword).replace(" ", "%20").lower()
+    user_agent = random.choice(USER_AGENTS)
+    try:
+        count=30
+        url = f'https://www.linkedin.com/voyager/api/graphql?variables=(start:6,origin:FACETED_SEARCH,query:(keywords:{keyword},flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(CONTENT)),(key:sortBy,value:List(date_posted)))),count:{count})&queryId=voyagerSearchDashClusters.5ba32757c00b31aea747c8bebb92855c'
+
+        headers = {
+            "accept": "application/vnd.linkedin.normalized+json+2.1",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
+            "csrf-token": "ajax:6470660172063231795",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referer": "https://www.linkedin.com/search/results/content/?keywords={keyword}&origin=FACETED_SEARCH&sid=Ps%2C&sortBy=%22date_posted%22",
+            "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Microsoft Edge\";v=\"138\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent": user_agent,
+            "x-li-lang": "en_US",
+            "x-li-page-instance": "urn:li:page:d_flagship3_search_srp_content;mslhcFPNSayE5APL8/urfQ==",
+            "x-li-pem-metadata": "Voyager - Content SRP=search-results",
+            "x-li-track": "{\"clientVersion\":\"1.13.37322\",\"mpVersion\":\"1.13.37322\",\"osName\":\"web\",\"timezoneOffset\":7,\"timezone\":\"Etc/GMT-7\",\"deviceFormFactor\":\"DESKTOP\",\"mpName\":\"voyager-web\",\"displayDensity\":1,\"displayWidth\":1920,\"displayHeight\":1080}",
+            "x-restli-protocol-version": "2.0.0"
+        }
+        cookies = {
+            "bcookie": "v=2&bd0728f1-dd60-4e37-8638-cd7d5b708d5f",
+            "bscookie": "v=1&2025042103550172c8d890-9870-4c98-8b1e-042b1112af6fAQEksHT9RYVo6JwywvJ8x908bvYTPMNA",
+            "li_sugr": "1c220d85-85de-4421-81f6-86781f50fcda",
+            "liap": "true",
+            "JSESSIONID": "ajax:6470660172063231795",
+            "li_theme": "light",
+            "li_theme_set": "app",
+            "_guid": "7999cbe4-51a2-46cc-9c42-31d703a43154",
+            "dfpfpt": "967e971e4393412bad26c260b3c81135",
+            "li_alerts": "e30=",
+            "VID": "V_2025_05_12_08_5384709",
+            "gpv_pn": "www.linkedin.com%2Flegal%2Fl%2Fapi-terms-of-use",
+            "s_tp": "27835",
+            "s_tslv": "1747037027803",
+            "s_ips": "1362",
+            "_gcl_au": "1.1.2121256374.1746782782.1909983468.1749193405.1749193405",
+            "li_at": "AQEDATTs4-UFaf-FAAABlrRd4p8AAAGYMXmx600Ar0oGeThxxEOCBVjun3JEDy4HgIz32pJQR9DpUGu-sWN53EzSsJ6SxiU0FhFPUO70zb-0_-dOmbFzi4uGF4GP2EOMe2MJldqIWhNXmqudlRZkd6aE",
+            "lang": "v=2&lang=en-us",
+            "timezone": "Etc/GMT-7",
+            "AnalyticsSyncHistory": "AQILGifO-1pJPwAAAZgq8trCRP0moWBqcHswvcqB11sikurC6xNaeHprCxbQY-r9ZMgEEzSRsxnIasEVZyLuBw",
+            "lms_ads": "AQFzvRNOgVPPCAAAAZgq8tvmkbYL4lOEfxsUGLKMP_VJAoHzHzsVHf4099UgpQ-_mUsmYlZqYJ8sJylxdJCF9YKQ5y7kimRV",
+            "lms_analytics": "AQFzvRNOgVPPCAAAAZgq8tvmkbYL4lOEfxsUGLKMP_VJAoHzHzsVHf4099UgpQ-_mUsmYlZqYJ8sJylxdJCF9YKQ5y7kimRV",
+            "AMCVS_14215E3D5995C57C0A495C55%40AdobeOrg": "1",
+            "aam_uuid": "32988820362534772503488696944483243602",
+            "fptctx2": "taBcrIH61PuCVH7eNCyH0J9Fjk1kZEyRnBbpUW3FKs8BBmipgyeYbO6dxdCN0Ne68Fbly68T5Q2K78hp9IlXNXqNXt6i49xvCVarD2XVbqbzpucx79bTC9OuJ%252bxWUcRc14%252bW99shhXovzwB2%252bhDaP27XCnchqfCiDgDp3O1OovBMMNrnE5F2%252bcvLMTLn%252fxMTfhqsu1MoAvH3z9pZMrA2eB11e735PyZJPP%252fOJNsG%252f78X%252bh283es3K0VsMiFwsoIb%252bbrsxBCr2XDUO5tTNax2XgeecgpluXzHMsMiSA28AYq4fIVPrcG7nURulraJBbBFwXKJKW12CBywOC37UuVjeIoj79GGsPdXc3PPDZPZELA%253d",
+            "AMCV_14215E3D5995C57C0A495C55%40AdobeOrg": "-637568504%7CMCIDTS%7C20291%7CMCMID%7C32450772095884805853505340237148120473%7CMCAAMLH-1753773175%7C3%7CMCAAMB-1753773175%7C6G1ynYcLPuiQxYZrsz_pkqfLG9yMXBpb2zX5dvJdYQJzPXImdj0y%7CMCOPTOUT-1753175575s%7CNONE%7CvVersion%7C5.1.1%7CMCCIDH%7C1843645645",
+            "__cf_bm": "3.f7AbWSrSnvwjNfdEB.gMicSXsfuoxJvWtYv.kpSPI-1753169146-1.0.1.1-c5iBBk5M1cGsdsPPrgEZu0r3xpgGllWmxbGPi0ZhKFJKUGmqrAUl0OY6krnDY_5KC3t6WDmgQ.q2aXTl_uf20BinVQjt9ZuTsF50TnBUNJU", 
+            "UserMatchHistory": "AQJbNuImErThqgAAAZgxB0G4hhxQb4iSLbY0IkNSAqQUXicHc4Mz6mwOPQ8QWS1V4xjPMnSpv1jFLyGggHhRN_aumeUUEIszcAO52OjR3MNB8YJJdUvKMmfEF5Rp1haHIgyVbYRV093YuSFUTQVjHcUX4R3_Owrf06pNAqMtdV2-6jZKWaYWWkXRU0UtPyezpAcAg015dA-aGa072cLudMmBp4X8HhLQn8-_lzjqubcU_1xB-o_N2p4AkvX8uGb9_LlbmB9jgNKoUzXc2QNriyRooX4SX7Om8sFnr1d0pEtlixe_p35VGDNNoBqI2GMn6IHyIsPClzKdHFJhbRnN3IOYvZcKmU9mGxQJ3QKOTJ8y3lwKdw",
+            "lidc": "b=OB69:s=O:r=O:a=O:p=O:g=5020:u=262:x=1:i=1753169217:t=1753248584:v=2:sig=AQGB73fIut4ofHDgS21KQQN81nkvIOfh"
+            }
+
+        response = requests.get(url=url, headers=headers, cookies=cookies)
+        if response.status_code != 200:  # Raise an error for bad responses
+            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            return [],str(response.status_code)
+        data_res = json.loads(response.text)
+        #print(data_res)
+        try:
+            list_post=data_res['included']
+        except:
+            list_post=[]
+        if not list_post:
+            return [],str(response.status_code)
+        list_post_res = []
+        for post in list_post:   
+            if post.get("metadata") is None:
+                continue  
+
+            item = get_data_post_search_linedin(post,keyword)
+            list_post_res.append(item)
+        return list_post_res,str(response.status_code)
+    except requests.RequestException as e:
+        raise Exception(f"Error fetching data from instagram: {str(e)}")

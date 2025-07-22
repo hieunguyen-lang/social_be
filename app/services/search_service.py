@@ -67,7 +67,12 @@ async def searchSocial(filters):
     except:
         result_linkedin = []
         status_linkedin= "Error fetching linkedin data"
-    combined = result_instagram + result_threads + result_x + result_tiktok +result_tumblr +result_linkedin
+    try:
+        result_fb_watch, status_fb_watch = await request_get_data.get_request_data_watchfb(filters.get("keyword"))  
+    except:
+        result_fb_watch = []
+        status_fb_watch= "Error fetching linkedin data"
+    combined = result_instagram + result_threads + result_x + result_tiktok +result_tumblr +result_linkedin + result_fb_watch
 
     combined.sort(key=lambda x: x.post_created_timestamp, reverse=True)
 
@@ -93,6 +98,9 @@ async def searchSocial(filters):
         f"===========================================\n"
         f"Result_linkedin: {len(result_linkedin)}\n"
         f"Status_linkedin: {status_linkedin}\n"
+        f"===========================================\n"
+        f"Result_fb_watch: {len(result_fb_watch)}\n"
+        f"Status_fb_watch: {status_fb_watch}\n"
         f"Total: {len(combined)}"
     )
     send_alert("https://discord.com/api/webhooks/1396778930232627220/rjLenkP2J1G3MaO7rFY-Y5_8KlMY0DU6sfW8oxNoyony18oFopVK2RUsgOQWuIvzCKyb",username,content)

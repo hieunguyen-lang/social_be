@@ -5,6 +5,7 @@ import uuid
 import re
 import json
 import httpx
+import urllib.parse
 from datetime import datetime,timedelta
 from unidecode import unidecode
 from parsel import Selector
@@ -900,6 +901,178 @@ async def get_request_data_linkedin( keyword: str )  -> list[CrawlerPostItem]:
                 continue  
 
             item = get_data_post_search_linedin(post,keyword)
+            list_post_res.append(item)
+        return list_post_res,str(response.status_code)
+    except requests.RequestException as e:
+        raise Exception(f"Error fetching data from instagram: {str(e)}")
+
+def url_encode(text: str) -> str:
+    return urllib.parse.quote(text, safe='')
+
+
+
+def get_data_post_search_watchfb(post,keyword):
+    
+    try:
+        mess_data=post['rendering_strategy']['view_model']['video_metadata_model']
+
+        post_id = mess_data['video']['id']
+        post_url = "https://www.facebook.com/reel/" + post_id
+        post_created=""
+        post_created_timestamp= int(datetime.now().timestamp())
+    except:
+        post_id = "get_id_error"
+        post_url = "get_url_error"
+        post_created_timestamp = 0
+        post_created = "get_created_error"
+ 
+    try:
+        durex=post['rendering_strategy']['view_model']['video_thumbnail_model']['video_duration_text']
+        message = (
+            "Thời lượng: " +durex + '\n' +
+            mess_data['relative_time_string'] + '\n' +
+            mess_data['title'] + '\n' +
+            mess_data['save_description']
+        )
+    except KeyError:
+        message = "get_message_error"
+    try:
+        post_image = post['rendering_strategy']['view_model']['video_thumbnail_model']['thumbnail_image']['uri']
+    except:
+        post_image = ""
+    
+    try:
+        count_like = 0  
+    except:
+        count_like = 0
+    try:
+        count_share = 0  
+    except:
+        count_share = 0
+    try:
+        count_comments=0   
+    except:
+        count_comments = 0
+    item = CrawlerPostItem(
+            post_id=post_id,
+            post_type="facebook",
+            post_keyword=keyword,
+            post_url=post_url,
+            message=message,
+            type=0,
+            post_image= post_image,
+            post_created=post_created,
+            post_created_timestamp=post_created_timestamp,
+            post_raw="",
+            count_like=count_like,
+            count_share=count_share,
+            count_comments=count_comments,
+            comments="",
+            brand_id="",
+            object_id="",
+            service_id="",
+            parent_post_id="",
+            parent_object_id="",
+            parent_service_id="",
+            page_id="",
+            page_name="",
+            author_id='',
+            author_name='',
+            author_username='',
+            author_image='',
+            data_form_source=0,
+        )
+    return item
+def generate_filters(start_date: datetime, end_date: datetime) -> str:
+    """
+    Trả về filters URL-encoded cho Facebook GraphQL dạng:
+    "filters": ["{...}", "{...}"]
+    """
+    # từng filter dạng JSON string, bỏ dấu cách thừa
+    sort_by = json.dumps({
+        "name": "videos_sort_by",
+        "args": "Most Recent"
+    }, separators=(',', ':'))
+
+    creation_time = json.dumps({
+        "name": "creation_time",
+        "args": json.dumps({
+            "start_year": str(start_date.year),
+            "start_month": f"{start_date.year}-{start_date.month:02}",
+            "start_day": f"{start_date.year}-{start_date.month:02}-{start_date.day:02}",
+            "end_year": str(end_date.year),
+            "end_month": f"{end_date.year}-{end_date.month:02}",
+            "end_day": f"{end_date.year}-{end_date.month:02}-{end_date.day:02}",
+        }, separators=(',', ':'))
+    }, separators=(',', ':'))
+
+    filters = [sort_by, creation_time]
+
+    # convert to JSON rồi URL-encode
+    filters_str = json.dumps(filters, separators=(',', ':'))
+    return urllib.parse.quote(filters_str)
+
+
+async def get_request_data_watchfb( keyword: str )  -> list[CrawlerPostItem]:
+    """
+    Fetch data from a given URL with optional parameters.
+    
+    :keyword: The keyword to fetch data from instagram.
+    :return: Response object containing the fetched data.
+    """
+    keyword_encoded = url_encode(keyword)
+    now = datetime.now()
+    yesterday = now - timedelta(days=1)
+
+    filters_encoded = generate_filters(yesterday, now)
+    print(filters_encoded)
+    user_agent = random.choice(USER_AGENTS)
+    try:
+        count=30
+        url = "https://www.facebook.com/api/graphql/"
+
+        payload = f'av=0&__aaid=0&__user=0&__a=1&__req=a&__hs=20291.HYP%3Acomet_loggedout_pkg.2.1...0&dpr=1&__ccg=EXCELLENT&__rev=1025011720&__s=tuo5p9%3Au1n4cw%3Aqal427&__hsi=7529969641645841789&__dyn=7xeUmwlEnwn8K2Wmh0no6u5U4e0yoW3q32360CEbo19oe8hw2nVE4W0qa0FE2awpUO0n24oaEd82lwv89k2C1Fwc60D85m1mzXwae4UaEW0LobrwmE2eUlwhE2FBwxw4BwqEGdw46wbS1LwTwNwLweq1Iwqo4eEgwro7SmEb8uwm85K0UE62&__csr=gqFr4WNnsLimKBOtfTahrQINYB5G8yaG9yV8Gm498O4oSiiFkcABK9CGaV8C58RwwAxqmiawkUohErxC1dAwBy8iwiqyqwhU5m26U98sx60jm8Bg6h01u67E06yi0adw1yW0c7w1MK0kuU03vkt08G04kE0AC09-w7uwrU1GA1Yo0HK04g80SS1KxNw20o0jAw5OAo0P-02Pz802Zu03Ly3Dhkl6w2eC0NE0gmw0yCw6tyo0aO8Bw2l81zUnpUG&__hsdp=hVhPZnsdNc5GDzbQ8wk6Gl8A-S7KeQl4gbAcvZk9y8eQdJXci6p84u1lwaacBy89E5q2C1Dw4fg59wLy83c82217w64w8u0yo0ym04O83fw2-U34wl83YwVwk82Iw3F81gU1Bo&__hblp=0uU2lwaW1eyUkV85i7o560zVU26wFwm40qe0-o1P827w8C6o0wK04O84e0yU0LK0Bk2S1kwfO36u58pxqawiE660_80yO1Wwbai48a8f8kwXwUw4ww&__sjsp=hVhPZnsdNcbiMwFUOZ2851GBi9fJxXzJ5h42V37_l1a3J15U9V82twaacBy89E1-41ioe83c82217w64w&__comet_req=15&lsd=AVq0e4Glnac&jazoest=2950&__spin_r=1025011720&__spin_b=trunk&__spin_t=1753207678&__crn=comet.fbweb.CometWatchSearchRoute&fb_api_caller_class=RelayModern&fb_api_req_friendly_name=SearchCometResultsPaginatedResultsQuery&variables=%7B%22allow_streaming%22%3Afalse%2C%22args%22%3A%7B%22callsite%22%3A%22comet%3Awatch_search%22%2C%22config%22%3A%7B%22exact_match%22%3Afalse%2C%22high_confidence_config%22%3Anull%2C%22intercept_config%22%3Anull%2C%22sts_disambiguation%22%3Anull%2C%22watch_config%22%3Anull%7D%2C%22context%22%3A%7B%22bsid%22%3A%2294d4e363-7db4-44e6-af68-cce2ff5034bb%22%2C%22tsid%22%3Anull%7D%2C%22experience%22%3A%7B%22client_defined_experiences%22%3A%5B%22ADS_PARALLEL_FETCH%22%5D%2C%22encoded_server_defined_params%22%3Anull%2C%22fbid%22%3Anull%2C%22type%22%3A%22WATCH_TAB_GLOBAL%22%7D%2C%22filters%22%3A{filters_encoded}%2C%22text%22%3A%22{keyword_encoded}%22%7D%2C%22count%22%3A5%2C%22cursor%22%3A%22AbrEic2g5fjI9wHwz6Mzve4uN4BGTw3gSapjPV_g9umdXT4wgKMeT4iwhSJiyZGinp7ZxglbqA2kmUJ_OhvYA4yr9BdFo9MW77hBOyQzpDaqVNshMUM05KV2vZoKkf22aQFECOQn-3TWlzOriuHMFXK3flUNVpj2DJl69_HNhEgbRkixC-uQ5CE9sVQbwka2EHZW5x3DNLp3WPfm-2OtzJqmOZZpUgDVoHRC66BNzpwy_zeltKKkgKIvGGUOwqGRrFvDbCDyWhYThy25twSGIkSWcM66xP-gpc7x-dccDDn5MIygBkI44ggPQBa5GQeBVEMNfRAWWjnz1RUP8XYaIoaTcxfk55Zv75RXkZRjkF7IflPk4B6p7j06TYpEM5DjnA_NxPpzQ7JKM-SbaET1Hz4R4Wh8Ha5EYrE3edUGGB0sc2EvHVFdk2tZZ7QbS40_BuappgfVKrj8GOo-P7Z_X5p3lBAGN19G55KtgOtuw_V0bekgwGv_sxPphRu771KqwIl8Xw5NR53xqncVgnYguCkiQb3ArFtaWQZygfnPLwqcmMbNoJQBCVQ6VsConHASP9-KrO1F3o7j7vILqFfrnGXHGNl9OFo_CjX8jJe5RM1YNFvn5ztMjdtwHK022ZiBvrFBjWjowXSNKTYI9uODsM14FlC8wP77prfQuW2h5QN9NANgQrQFeuKZXuukloBRTYuzdGGaOgqrHAoN14TLxN0Ak2x2NyhmqJ4hS4NYFB42YC2rxOh_tJ0Zf73xSSGIJIBw2GS-VqrCHGf25rpJ4QAPx02956716A6RNiA2sdZN3CKEy9VaIh8ilL5Rv2QZdL_1kWTsx3wUz5pdCWQV-xwCrFgN7hdKrBYPSfO4p3VEYx-p-cmTjK2TGOJJ1pvAWLJbuP6QxlyBBKqqkgM2QRKe0Swa6uH09L2p-7zBIN_7P7WcVM5hinGlWtJ7c9Vq_p-O8i_OLNLSeFOL62bWBjt4hlcU_44mIz1yYzYIGstLZ0_dmu_A0Qn9hpAbXbCRzcKmJYgDaTt9LvL8j_bQ9GjYjnnVHNZ22xpJv3W6LHAW7cBVFtN5P2g2Tjo1t6vovm3GgugdBckyMoiwtNxeQfUZlTrslT-urIto3NCLiD2P121zv0ZY-Rn-BqiHZvKv5r5HzqVppz9upWhSPtLUf0_hIw1yQlQI75xiBYnf4zojqg-gKy3A3rOo_sx62xpnZMx_nP2JoQSAe5dh0vBnncT-B-doXbgPwhIoo7CQtouMV1PimrjhlWHSsec9sThTBqqBke8Xg7ZRLOnKvuGXumzD1ScI0p67Of9dpcsKg7Xu4Pk5mppFy8P8vlhbCW4FN62f1K2qGjlOFjRYDaZ9iAfJ6UaMRPkKdeh-LjeK7trDE1Sh7VUcry2cAlIDo42Uec0AH49WeSL3d2TJ5d8M0-6fD0kLFpYDDRxyPTdxJJIBpmP1odN9ZC5LoL3jUWx5qsquo5PA21pu2FJvRS3f3iDthOljSEJQHmm12m6C8sbRqwcUYKKwB-qcIoeHCCGVHAMd5idV6IZNO0TYKm77n5CjHNioYlKppUCysPTku2TPjs5fxTEM8sEKlwezaACHOzQ%22%2C%22feedLocation%22%3A%22SEARCH%22%2C%22feedbackSource%22%3A23%2C%22fetch_filters%22%3Atrue%2C%22focusCommentID%22%3Anull%2C%22locale%22%3Anull%2C%22privacySelectorRenderLocation%22%3A%22COMET_STREAM%22%2C%22renderLocation%22%3A%22search_results_page%22%2C%22scale%22%3A1%2C%22stream_initial_count%22%3A0%2C%22useDefaultActor%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsWorkUserrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_deprecate_short_form_video_context_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FeedDeepDiveTopicPillThreadViewEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_enable_view_dubbed_audio_type_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider%22%3Afalse%2C%22__relay_internal__pv__WorkCometIsEmployeeGKProviderrelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsMergQAPollsrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsMediaFooter_comet_enable_reels_ads_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIShareActionMigrationrelayprovider%22%3Atrue%2C%22__relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsIFUTileContent_reelsIFUPlayOnHoverrelayprovider%22%3Afalse%7D&server_timestamps=true&doc_id=9640490156052538'
+        headers = {
+        'accept': '*/*',
+        'accept-language': 'vi',
+        'content-type': 'application/x-www-form-urlencoded',
+        'origin': 'https://www.facebook.com',
+        'priority': 'u=1, i',
+        'referer': f'https://www.facebook.com/watch/search?q={keyword_encoded}&filters=eyJ2aWRlb3Nfc29ydF9ieTowIjoie1wibmFtZVwiOlwidmlkZW9zX3NvcnRfYnlcIixcImFyZ3NcIjpcIk1vc3QgUmVjZW50XCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAyNVxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAyNS0wN1xcXCIsXFxcImVuZF95ZWFyXFxcIjpcXFwiMjAyNVxcXCIsXFxcImVuZF9tb250aFxcXCI6XFxcIjIwMjUtMDdcXFwiLFxcXCJzdGFydF9kYXlcXFwiOlxcXCIyMDI1LTA3LTIyXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMjUtMDctMjJcXFwifVwifSJ9',
+        'sec-ch-prefers-color-scheme': 'light',
+        'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Microsoft Edge";v="138"',
+        'sec-ch-ua-full-version-list': '"Not)A;Brand";v="8.0.0.0", "Chromium";v="138.0.7204.158", "Microsoft Edge";v="138.0.3351.95"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-model': '""',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-ch-ua-platform-version': '"15.0.0"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+        'user-agent': user_agent,
+        'x-asbd-id': '359341',
+        'x-fb-friendly-name': 'SearchCometResultsPaginatedResultsQuery',
+        'x-fb-lsd': 'AVq0e4Glnac',
+        'Cookie': 'datr=FdJ_aJRXUK4xxwe62D4zWYIc; sb=L9J_aCrXDRrWbbJ9XGJdqqw3; m_pixel_ratio=3; fr=0TWbbf10IwFprPFwT..Bof9Iv..AAA.0.0.Bof9LE.AWdNao4BneQxmeAHpyEUtRzNwMI; dpr=1; wd=1247x1284; fr=1koWPhri0Vrme8PQo.AWfRnI-1b4Yi3pk2MOQkBurRyNVqWV86ThLJAEKd1IOen0RTV5A.Bof8oe..AAA.0.0.Bof8oe.AWc4_n_WhpEpHwJm2DSrtApsGeI'
+        }
+        #print(payload)
+        response = requests.post(url=url, headers=headers, data=payload)
+        if response.status_code != 200:  # Raise an error for bad responses
+            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            return [],str(response.status_code)
+        data_res = json.loads(response.text)
+        #print(data_res)
+        try:
+            list_post=data_res['data']['serpResponse']['results']['edges']
+        except:
+            list_post=[]
+        if not list_post:
+            return [],str(response.status_code)
+        list_post_res = []
+        for post in list_post:   
+
+
+            item = get_data_post_search_watchfb(post,keyword)
             list_post_res.append(item)
         return list_post_res,str(response.status_code)
     except requests.RequestException as e:

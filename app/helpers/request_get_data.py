@@ -993,13 +993,13 @@ def generate_filters(start_date: datetime, end_date: datetime) -> str:
         "name": "videos_sort_by",
         "args": "Most Recent"
     }, separators=(',', ':'))
-
+    start_minus_2 = start_date + timedelta(days=2)
     creation_time = json.dumps({
         "name": "creation_time",
         "args": json.dumps({
             "start_year": str(start_date.year),
             "start_month": f"{start_date.year}-{start_date.month:02}",
-            "start_day": f"{start_date.year}-{start_date.month:02}-{start_date.day:02}",
+            "start_day": f"{start_minus_2.year}-{start_minus_2.month:02}-{start_minus_2.day:02}",
             "end_year": str(end_date.year),
             "end_month": f"{end_date.year}-{end_date.month:02}",
             "end_day": f"{end_date.year}-{end_date.month:02}-{end_date.day:02}",

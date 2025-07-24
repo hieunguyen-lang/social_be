@@ -38,19 +38,20 @@ def send_alert(webhook_url,username,content):
 async def searchSocial(filters):
     try:
         result_instagram, status_instagram = await request_get_data.get_request_data_instagram(filters.get("keyword"))
-    except:
+    except Exception as e:
         result_instagram=[]
+        print(f"[ERORR] Error fetching Instagram data {str(e)}")
         status_instagram= "Error fetching Instagram data"
     try:
         result_threads, status_threads = await request_get_data.get_request_data_threads(filters.get("keyword"))
     except:
         result_threads = []
-        status_threads= "Error fetching Instagram data"
+        status_threads= "Error fetching Threads"
     try:
         result_x, status_x = await request_get_data.get_request_data_x(filters.get("keyword"))
     except:
         result_x = []
-        status_x= "Error fetching Instagram data"
+        status_x= "Error fetching X"
     try:
         result_tiktok, status_tiktok = await request_get_data.get_request_data_tiktok(filters.get("keyword"))
     except:

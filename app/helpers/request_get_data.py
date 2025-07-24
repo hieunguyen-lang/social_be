@@ -5,6 +5,7 @@ import uuid
 import re
 import json
 import httpx
+from lxml import html
 import urllib.parse
 from datetime import datetime,timedelta
 from unidecode import unidecode
@@ -89,21 +90,29 @@ def get_data_post_hastag_ig_recent(res,keyword):
         except:
             comment_count=0
         try:
+            # url=url_post+"/embed"
+            # response =  requests.get(url)
+            # tree = html.fromstring(response.content)
+            # # ✅ Lấy username
+            # author_username = tree.xpath('//a[contains(@class, "Username")]/span/text()')
+            # author_username = author_username[0] if author_username else None
+
+            # # ✅ Lấy avatar URL
+            # author_image = tree.xpath('//div[contains(@class, "AvatarContainer")]//img/@src')
+            # author_image = author_image[0] if author_image else None
+            author_username=''
+            author_image=''
+            author_id=''
+        except Exception as e:
+            author_username=''
+            author_image=''
+            author_id=''
+            raise e
+            
+        try:
             author_id=data['owner']['id']
         except:
             author_id=''
-        try:
-            full_name=data['caption']['user']['full_name']
-        except:
-            full_name=''
-        try:
-            author_username=data['caption']['user']['username']
-        except:
-            author_username=''
-        try:
-            author_image=data['caption']['user']['profile_pic_url']
-        except:
-            author_image=''
         #Object Item
         item = CrawlerPostItem(
             post_id=post_id,
@@ -129,7 +138,7 @@ def get_data_post_hastag_ig_recent(res,keyword):
             page_id="",
             page_name="",
             author_id=author_id,
-            author_name=full_name,
+            author_name=author_username,
             author_username=author_username,
             author_image=author_image,
             data_form_source=0,
@@ -147,48 +156,51 @@ async def get_request_data_instagram( keyword: str )  -> list[CrawlerPostItem]:
     user_agent = random.choice(USER_AGENTS)
     try:
         headers = {
-            'accept': '*/*',
-            'accept-language': 'vi,en-US;q=0.9,en;q=0.8,fr-FR;q=0.7,fr;q=0.6',
-            'priority': 'u=1, i',
-            'referer': 'https://www.instagram.com/explore/search/keyword/?q={keyword}',
-            'sec-ch-prefers-color-scheme': 'dark',
-            'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
-            'sec-ch-ua-full-version-list': '"Google Chrome";v="137.0.7151.124", "Chromium";v="137.0.7151.124", "Not/A)Brand";v="24.0.0.0"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-model': '""',
-            'sec-ch-ua-platform': '"Windows"',
-            'sec-ch-ua-platform-version': '"10.0.0"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-origin',
-            'user-agent': user_agent,
-            'x-asbd-id': '359341',
-            'x-csrftoken': 'M5MexFCAmVtzWC8o5JMzgRbNHISu6F1M',
-            'x-ig-app-id': '936619743392459',
-            'x-ig-www-claim': 'hmac.AR2FSYbLkevUBDCqMQn-xnlIjZst3cTUXSMNMmxhp-LuyH66',
-            'x-requested-with': 'XMLHttpRequest',
-            'x-web-session-id': 'wyh59a:g0lokc:09aoyj',
-    
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
+            "dpr": "1",
+            "pragma": "no-cache",
+            "priority": "u=0, i",
+            "sec-ch-prefers-color-scheme": "light",
+            "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Microsoft Edge\";v=\"138\"",
+            "sec-ch-ua-full-version-list": "\"Not)A;Brand\";v=\"8.0.0.0\", \"Chromium\";v=\"138.0.7204.158\", \"Microsoft Edge\";v=\"138.0.3351.95\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-model": "\"\"",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-ch-ua-platform-version": "\"10.0.0\"",
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "none",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "user-agent": user_agent,
+            "viewport-width": "1150"
         }
+
         cookies = {
             "datr": "FH0uaE9jzr2zLPSntS6XVb6y",
-            "ig_did": "009BE4D0-E24E-4C38-B68C-D4130764E64B",
-            "mid": "aAhXYQALAAFFk406Xx_Zu60Pk67y",
+            "ig_did": "48AD0009-93BC-4E50-BA2B-33B54567EDFC",
             "ig_nrcb": "1",
             "fbm_124024574287414": "base_domain=.instagram.com",
-            "csrftoken": "M5MexFCAmVtzWC8o5JMzgRbNHISu6F1M",
-            "ds_user_id": "74091417494",
-            "ig_direct_region_hint": "\"ASH\\05458448736471\\0541779954390:01f756ac5f88a79ac1f70c32b2ce99c3895da8b76658d17d6b71cb9015d3c63ccfb638f0\"",
             "ps_l": "1",
             "ps_n": "1",
-            "wd": "1260x932",
-            "sessionid": "58448736471%3Aksyf2QvaN1dNZz%3A8%3AAYfFKMJGYML-_F8OyO7NMF1Jtw7EzfVCOG6cjqCYpA",
-            "rur": "VLL\\05474091417494\\0541784366622:01fe75b8de6615d5f1f1b19bdaede61f9a34a6bae4f78ba4ca404410668abdd30e22f1bb"
+            "ig_lang": "vi",
+            "fbsr_124024574287414": "m8RX1dYSpPgjGzoAH5HLhR786cizwGWtLpeROZjj3Pk.eyJ1c2VyX2lkIjoiMTAwMDAyODI0Njc4NTA4IiwiY29kZSI6IkFRQnFGRWthdUJVcUl0Mm5COS1uSGpWNFlGTjE5NEpnM3lLb2xCQjU0elcwSXB3VnJlZG53TkVMcWxVenRUZUFKeEYtdTRmNmpaY0lkSzFKMWZoSjVxVU9SQXYwSC1pMVRrdWRLa2VWZkdMX0VEWnBxODF5a0ttWEZRXzctdGkzdHczanZFYUFUUkJidWgtUVI3TWdsdjhnMmFhVHREaG5QVTNYRUI2MzVteVVQeFJjTlkxZWFzVDlZVWNtdXRtQVZ5WFYtUktNcGpPcG1sbFQtUTFwczZkS09seUdJOVJBNjZrZjdTaG9CS0tFelI1dF9fQjVxU0NSS3NjY3QtV2RYZVVDczBCYlpGRUxzLVJoYW9tUkNLUUtjZTdhWm05eFJyQVBFYWZHeEtjSkwxb2NOb0owWDQ2Z0FnLVIzQ3B1VHpFIiwib2F1dGhfdG9rZW4iOiJFQUFCd3pMaXhuallCUEZ0dzB6MEs0U1Y3cnhtdGlPUmRESFBGQVpDWFdKQU5GZDNENnFaQTZHUkdaQmF1VVBmVmpmVlVEazRXUzNYWkNPQm03Y1FKamRTbURFSEJveTB1a251NDAwOGh3OFdtajBYNWhXaVd2UnFIWkM0VFlFZTFTUjR6VHR6eW1SN1JaQm9ubjdoWkFwNkFPOGVmYnN4N2FLbHNFQ3psdzdxbGFNU2kwakNBeUNZUEZXd0ZhWkNyZTc3bjFWc2c5ZHk2TG9zYXlQbmZINFFhN214c1pCcGNaRCIsImFsZ29yaXRobSI6IkhNQUMtU0hBMjU2IiwiaXNzdWVkX2F0IjoxNzUzMjU3NjE0fQ",
+            "ds_user_id": "58448736471",
+            "mid": "aBrbfwALAAH1NWVE7cTEg4yVEsQc",
+            "dpr": "1",
+            "csrftoken": "CUEbi6MWe2To1WElGSRr59thsBzxNMAm",
+            "sessionid": "58448736471%3AAZp34uzqvIWt4H%3A10%3AAYdFUF0NoU5Gx7dhAfxxayRXFAH6QRtHO_-jin0eBA",
+            "wd": "1150x932",
+            "rur": "\"HIL\\05458448736471\\0541784866071:01fed3895ddf732e879aeee12902518d7d031f74e202f2d474a630efd23105395497db8e\""
         }
-        url_rq =f"https://www.instagram.com/graphql/query/?query_hash=9b498c08113f1e09617a1703c22b2f32&variables=%7B%22tag_name%22%3A%22{keyword}%22%2C%22first%22%3A24%2C%22after%22%3Anull%7D"
-        print(url_rq)
+        #url_rq =f"https://www.instagram.com/graphql/query/?query_hash=9b498c08113f1e09617a1703c22b2f32&variables=%7B%22tag_name%22%3A%22{keyword}%22%2C%22first%22%3A24%2C%22after%22%3Anull%7D"
+        url_rq = f'https://www.instagram.com/graphql/query/?query_hash=9b498c08113f1e09617a1703c22b2f32&variables=%7B%22tag_name%22%3A%22{keyword}%22%2C%22first%22%3A24%2C%22after%22%3Anull%7D'
+        print("Crawl Instagram")
         response = requests.get(url=url_rq, headers=headers, cookies=cookies)
-        if response.status_code != 200:  # Raise an error for bad responses
+        #print(response.text)
+        if response.status_code != 200  :  # Raise an error for bad responses
             print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
             return [],str(response.status_code)
         data_res = json.loads(response.text)
@@ -197,21 +209,201 @@ async def get_request_data_instagram( keyword: str )  -> list[CrawlerPostItem]:
             list_post=data_res['data']['hashtag']['edge_hashtag_to_media']['edges']
         except:
             list_post=[]
+        
         if not list_post:
+            print
             return [],str(response.status_code)
         list_post_res = []
         for post in list_post:       
             item = get_data_post_hastag_ig_recent(post,keyword)
             list_post_res.append(item)
+        print("list_post_res")
+        print(len(list_post_res))
         return list_post_res,str(response.status_code)
     except requests.RequestException as e:
         raise Exception(f"Error fetching data from instagram: {str(e)}")
+
+def get_data_user_ig(res,keyword):
+        data=res['user']
+        try:
+            post_id=data['username']
+            url_post="https://www.instagram.com/"+post_id
+        except:
+            post_id=''
+            url_post=''
+        try:
+            message=data['edge_media_to_caption']['edges'][0]['node']['text']
+        except:
+            message=''
+        try:
+            post_image=replace_ig_host(data['display_url'])
+        except:
+            post_image=''
+        try:
+            post_created_timestamp=data['taken_at_timestamp']
+            post_created=formatTimestamp(post_created_timestamp)
+        except:
+            post_created=formatTimestamp(1748937706)
+            post_created_timestamp=1748937706
+        try:
+            like_count=data['edge_liked_by']['count']
+        except:
+            like_count=0
+        try:
+            comment_count=data['edge_media_to_comment']["count"]
+        except:
+            comment_count=0
+        try:
+            # url=url_post+"/embed"
+            # response =  requests.get(url)
+            # tree = html.fromstring(response.content)
+            # # ✅ Lấy username
+            # author_username = tree.xpath('//a[contains(@class, "Username")]/span/text()')
+            # author_username = author_username[0] if author_username else None
+
+            # # ✅ Lấy avatar URL
+            # author_image = tree.xpath('//div[contains(@class, "AvatarContainer")]//img/@src')
+            # author_image = author_image[0] if author_image else None
+            author_username=''
+            author_image=''
+            author_id=''
+        except Exception as e:
+            author_username=''
+            author_image=''
+            author_id=''
+            raise e
+            
+        try:
+            author_id=data['pk']
+        except:
+            author_id=''
+        #Object Item
+        item = CrawlerPostItem(
+            post_id=post_id,
+            post_type="instagram",
+            post_keyword=keyword,
+            post_url=url_post,
+            message=message,
+            type=0,
+            post_image=post_image,
+            post_created=post_created,
+            post_created_timestamp=post_created_timestamp,
+            post_raw="",
+            count_like=like_count,
+            count_share=0,
+            count_comments=comment_count,
+            comments="",
+            brand_id="",
+            object_id="",
+            service_id="",
+            parent_post_id="",
+            parent_object_id="",
+            parent_service_id="",
+            page_id="",
+            page_name="",
+            author_id=author_id,
+            author_name=author_username,
+            author_username=author_username,
+            author_image=author_image,
+            data_form_source=0,
+        )
+        return item
+
+
+async def get_request_user_profile_instagram( keyword: str )  -> list[CrawlerPostItem]:
+    """
+    Fetch data from a given URL with optional parameters.
     
+    :keyword: The keyword to fetch data from instagram.
+    :return: Response object containing the fetched data.
+    """
+    #keyword = unidecode(keyword).replace(" ", "").lower()
+    user_agent = random.choice(USER_AGENTS)
+    try:
+        url = "https://www.instagram.com/graphql/query"
+        headers = {
+            "accept": "*/*",
+            "accept-language": "vi,en-US;q=0.9,en;q=0.8,fr-FR;q=0.7,fr;q=0.6",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://www.instagram.com",
+            "priority": "u=1, i",
+            "referer": "https://www.instagram.com/hdsaisonfinancevn/",
+            "sec-ch-prefers-color-scheme": "dark",
+            "sec-ch-ua": "\"Chromium\";v=\"136\", \"Google Chrome\";v=\"136\", \"Not.A/Brand\";v=\"99\"",
+            "sec-ch-ua-full-version-list": "\"Chromium\";v=\"136.0.7103.154\", \"Google Chrome\";v=\"136.0.7103.154\", \"Not.A/Brand\";v=\"99.0.0.0\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-model": "\"\"",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-ch-ua-platform-version": "\"10.0.0\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent": user_agent,
+            "x-asbd-id": "359341",
+            "x-bloks-version-id": "b029e4bcdab3e79d470ee0a83b0cbf57b9473dab4bc96d64c3780b7980436e7a",
+            "x-csrftoken": "CUEbi6MWe2To1WElGSRr59thsBzxNMAm",
+            "x-fb-friendly-name": "PolarisProfilePostsTabContentQuery_connection",
+            "x-fb-lsd": "yelNJ0Yn0p_QnffS677ugb",
+            "x-ig-app-id": "936619743392459",
+            "x-root-field-name": "xdt_api__v1__feed__user_timeline_graphql_connection"
+        }
+
+
+        cookies = {
+                    "ig_nrcb": "1",
+                    "ig_did": "48AD0009-93BC-4E50-BA2B-33B54567EDFC",
+                    "mid": "aBrbfwALAAH1NWVE7cTEg4yVEsQc",
+                    "datr": "YFcIaNU0Vt8W6cCT755Js56V",
+                    "fbm_124024574287414": "base_domain=.instagram.com",
+                    "csrftoken": "CUEbi6MWe2To1WElGSRr59thsBzxNMAm",
+                    "ds_user_id": "58448736471",
+                    "ps_l": "1",
+                    "ps_n": "1",
+                    "sessionid": "74122845781%3AaGelD550sc1k5H%3A18%3AAYcO-thLzGyqENkixatK7U1ErHmG2WVdscqVjzfZoA",
+                    "wd": "851x778",
+                    "rur": "\"HIL\\05458448736471\\0541782263402:01fe4bbc47bf5290a5de153875f0c524bfb546bcea10b2e93908ded3810d2f9f0dc74f85\""
+        }
+        
+        body = 'av=17841458334146092&__d=www&__user=0&__a=1&__req=13&__hs=20279.HYP%3Ainstagram_web_pkg.2.1...0&dpr=1&__ccg=EXCELLENT&__rev=1024608489&__s=al53u2%3Avem5lm%3A6p3xd2&__hsi=7525342165906477118&__dyn=7xeUjG1mxu1syUbFp41twWwIxu13wvoKewSAwHwNw9G2S7o2vwpUe8hw2nVE4W0qa0FE2awgo9oO0n24oaEnxO1ywOwv89k2C1Fwc60AEC1TwQzXwae4UaEW2G0AEco5G1Wxfxm16wUwtE1wEbUGdG1QwTU9UaQ0z8c86-3u2WE5B08-269wr86C1mgcEed6goK2O4Xxui2qi7E5y4UrwHwGwa6byohw4rxO7EG3a&__csr=iMoWn2IpMRqMh5RbsBmj6cZeViYWBQGy4WFpOK8Gv8dl2nlmilfyJeVaAHCFvSturiWmEx24XgCRCo_BKmjHQWDiF5ChutF2q-4FUOaDxh2Q4Ehjx68BAGAurGiiTRhaAAzoy49fKeLDuiUV4zUrVApe4p8B3pBBUiz9VUtAx54xaqt5DCHngy00lkOXwtStwbkwfy0qo1uU45wj88E4upa0oy42K8gG0J20OwcG0TE0TK1Aw1NA8wxU4Cu1Uw58ws4m8Bsw3jwPwBA9849U6Ol1502ZEx2Fm1Gxa0qqp015S00wxE0RC02WC&__hsdp=gePX95TT2D36PaALqkbxvLH8D4h2E2j2Dshd4EMxAkx2eimAgjKgOAhpPsB5wmm7ln6xaeyUrzkfIkEroVx3wmEG22R8dzEaoRFe8Dwru6bwn8AiUeo8U4a2Gu7rw-yUB6UfEcUkwfiu0wo1yU3rw5Zxe0FU8E9o9U3ywkoa8461Pwba0GP0_g2wg8o621Yw-wfy2e1HUwS2W&__hblp=0kpEW2C1hxq7XAQ68O1MyUhyV8oxG0DEd8tGcLxnxKXyQ7odk5p9EGucCzomhV8jzpoiAKAUNbDAx62WcUoKcyF43WUvDwxWxqvwPKWLAwyiAK6rDwIVVF8CuawRx916dxi0xEcoa8iDxG10wBw45yE7G0LotwlonG0w87N4hUjw9a58W4U9p88E9UO0HodUpwEwYAwsU2ewzwiEG1lc227A1uwg7xOErwh4789EdVUdEkgnwyxe7t0seexi2l0CgOfUwSE99Eiw&__sjsp=gePX95-T2D36PaALqkbxvLH8D4h2E2j2DshdPEMxAkx229qh4iUlwzwukr5xa3qdg-NixJwaGQ&__comet_req=7&fb_dtsg=NAft7f1PKnxMVSUcCPmJz3WqD8k24SapIWCdPnISYWNbnuv0I3jMCBQ%3A17843676607167008%3A1747877953&jazoest=26196&lsd=B8K0DxfdDOgtIkJ5oWgCmY&__spin_r=1024608489&__spin_b=trunk&__spin_t=1752130260&__crn=comet.igweb.PolarisFeedRoute&fb_api_caller_class=RelayModern&fb_api_req_friendly_name=PolarisSearchBoxRefetchableQuery&variables=%7B%22data%22%3A%7B%22context%22%3A%22blended%22%2C%22include_reel%22%3A%22true%22%2C%22query%22%3A%22'+keyword+'%22%2C%22rank_token%22%3A%22%22%2C%22search_session_id%22%3A%229e9878b4-f0f1-4f3a-ac99-7816ae24bbe5%22%2C%22search_surface%22%3A%22user%22%7D%2C%22hasQuery%22%3Atrue%7D&server_timestamps=false&doc_id=9523870587735596'
+
+       
+        response = requests.get(url=url, headers=headers, cookies=cookies,data=body)
+        #print(response.text)
+        if response.status_code != 200  :  # Raise an error for bad responses
+            print(f"[ERROR] Failed to fetch user data from Instagram: {response.status_code}")
+            return [],str(response.status_code)
+        data_res = json.loads(response.text)
+        #print(data_res)
+        try:
+            list_user=data_res['data']['xdt_api__v1__fbsearch__topsearch_connection']['users']
+        except:
+            list_user=[]
+        
+        if not list_user:
+            print
+            return [],str(response.status_code)
+        list_post_res = []
+        for post in list_user:       
+            item = get_data_user_ig(post,keyword)
+            list_post_res.append(item)
+        print("list_post_res")
+        print(len(list_post_res))
+        return list_post_res,str(response.status_code)
+    except requests.RequestException as e:
+        raise Exception(f"Error fetching data from instagram: {str(e)}")
+
+
+
+
 def handle_parse_data_threads(item_post,keyword):
     content_created = datetime.fromtimestamp(item_post["taken_at"]).strftime(
                                 DATETIME_FORMAT)
     try:
-        message = item_post["caption"]["text"]
+        username =item_post["user"]["username"]
+    except:
+        username=''
+    try:
+        message =item_post["caption"]["text"]
     except:
         message = ""
     try:
@@ -242,8 +434,8 @@ def handle_parse_data_threads(item_post,keyword):
             page_id="",
             page_name="",
             author_id=item_post["user"]["pk"],
-            author_name=item_post["user"]["username"] if "user" in item_post else "",
-            author_username=item_post["user"]["username"] if "user" in item_post else "",
+            author_name=username,
+            author_username=username,
             author_image=item_post["user"]["profile_pic_url"],
             data_form_source=0,
         )
@@ -707,7 +899,7 @@ async def get_request_data_tumblr( keyword: str )  -> list[CrawlerPostItem]:
         print(url)
         response = requests.get(url=url, headers=headers, cookies=cookies)
         if response.status_code != 200:  # Raise an error for bad responses
-            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            print(f"[ERROR] Failed to fetch data from tumblr: {response.status_code}")
             return [],str(response.status_code)
         data_res = json.loads(response.text)
         #print(data_res)
@@ -882,10 +1074,10 @@ async def get_request_data_linkedin( keyword: str )  -> list[CrawlerPostItem]:
             "UserMatchHistory": "AQJbNuImErThqgAAAZgxB0G4hhxQb4iSLbY0IkNSAqQUXicHc4Mz6mwOPQ8QWS1V4xjPMnSpv1jFLyGggHhRN_aumeUUEIszcAO52OjR3MNB8YJJdUvKMmfEF5Rp1haHIgyVbYRV093YuSFUTQVjHcUX4R3_Owrf06pNAqMtdV2-6jZKWaYWWkXRU0UtPyezpAcAg015dA-aGa072cLudMmBp4X8HhLQn8-_lzjqubcU_1xB-o_N2p4AkvX8uGb9_LlbmB9jgNKoUzXc2QNriyRooX4SX7Om8sFnr1d0pEtlixe_p35VGDNNoBqI2GMn6IHyIsPClzKdHFJhbRnN3IOYvZcKmU9mGxQJ3QKOTJ8y3lwKdw",
             "lidc": "b=OB69:s=O:r=O:a=O:p=O:g=5020:u=262:x=1:i=1753169217:t=1753248584:v=2:sig=AQGB73fIut4ofHDgS21KQQN81nkvIOfh"
             }
-
+        cookies={}
         response = requests.get(url=url, headers=headers, cookies=cookies)
         if response.status_code != 200:  # Raise an error for bad responses
-            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            print(f"[ERROR] Failed to fetch data from Linkedin: {response.status_code}")
             return [],str(response.status_code)
         data_res = json.loads(response.text)
         #print(data_res)
@@ -988,18 +1180,23 @@ def generate_filters(start_date: datetime, end_date: datetime) -> str:
     Trả về filters URL-encoded cho Facebook GraphQL dạng:
     "filters": ["{...}", "{...}"]
     """
-    # từng filter dạng JSON string, bỏ dấu cách thừa
+    import json
+    import urllib.parse
+    from datetime import datetime, timedelta
+
+    # filter sắp xếp
     sort_by = json.dumps({
         "name": "videos_sort_by",
         "args": "Most Recent"
     }, separators=(',', ':'))
-    start_minus_2 = start_date + timedelta(days=2)
+
+    # filter theo thời gian
     creation_time = json.dumps({
         "name": "creation_time",
         "args": json.dumps({
             "start_year": str(start_date.year),
             "start_month": f"{start_date.year}-{start_date.month:02}",
-            "start_day": f"{start_minus_2.year}-{start_minus_2.month:02}-{start_minus_2.day:02}",
+            "start_day": f"{start_date.year}-{start_date.month:02}-{start_date.day:02}",
             "end_year": str(end_date.year),
             "end_month": f"{end_date.year}-{end_date.month:02}",
             "end_day": f"{end_date.year}-{end_date.month:02}-{end_date.day:02}",
@@ -1008,10 +1205,45 @@ def generate_filters(start_date: datetime, end_date: datetime) -> str:
 
     filters = [sort_by, creation_time]
 
-    # convert to JSON rồi URL-encode
+    # Chuyển thành JSON rồi URL-encode
     filters_str = json.dumps(filters, separators=(',', ':'))
     return urllib.parse.quote(filters_str)
 
+def generate_creation_time_filter(start_date: datetime, end_date: datetime) -> str:
+    """
+    Trả về filters URL-encoded đúng định dạng Facebook yêu cầu,
+    với args trong creation_time là một chuỗi JSON đã escape.
+    """
+    # B1: Tạo chuỗi JSON cho phần args của creation_time
+    args_obj = {
+        "start_year": str(start_date.year),
+        "start_month": f"{start_date.year}-{start_date.month:02}",
+        "start_day": f"{start_date.year}-{start_date.month:02}-{start_date.day:02}",
+        "end_year": str(end_date.year),
+        "end_month": f"{end_date.year}-{end_date.month:02}",
+        "end_day": f"{end_date.year}-{end_date.month:02}-{end_date.day:02}"
+    }
+    args_str = json.dumps(args_obj, separators=(',', ':'))  # encode 1 lần
+
+    # B2: Tạo từng filter string (vẫn ở dạng string)
+    sort_by = json.dumps({
+        "name": "videos_sort_by",
+        "args": "Most Recent"
+    }, separators=(',', ':'))
+
+    creation_time = json.dumps({
+        "name": "creation_time",
+        "args": args_str  # giữ nguyên string JSON
+    }, separators=(',', ':'))
+
+    # B3: Gộp lại thành mảng chuỗi JSON
+    filters = [sort_by, creation_time]
+
+    # B4: Dump mảng này thành JSON (list of strings)
+    filters_json_array = json.dumps(filters, separators=(',', ':'))
+
+    # B5: URL-encode để truyền qua network
+    return urllib.parse.quote(filters_json_array)
 
 async def get_request_data_watchfb( keyword: str )  -> list[CrawlerPostItem]:
     """
@@ -1022,16 +1254,22 @@ async def get_request_data_watchfb( keyword: str )  -> list[CrawlerPostItem]:
     """
     keyword_encoded = url_encode(keyword)
     now = datetime.now()
-    yesterday = now - timedelta(days=1)
-
-    filters_encoded = generate_filters(yesterday, now)
+    start_day = now - timedelta(days=3)
+    end_day = now +timedelta(days=3)
+    filters_encoded = generate_creation_time_filter(start_day, end_day)
     print(filters_encoded)
     user_agent = random.choice(USER_AGENTS)
     try:
         count=30
         url = "https://www.facebook.com/api/graphql/"
-
-        payload = f'av=0&__aaid=0&__user=0&__a=1&__req=a&__hs=20291.HYP%3Acomet_loggedout_pkg.2.1...0&dpr=1&__ccg=EXCELLENT&__rev=1025011720&__s=tuo5p9%3Au1n4cw%3Aqal427&__hsi=7529969641645841789&__dyn=7xeUmwlEnwn8K2Wmh0no6u5U4e0yoW3q32360CEbo19oe8hw2nVE4W0qa0FE2awpUO0n24oaEd82lwv89k2C1Fwc60D85m1mzXwae4UaEW0LobrwmE2eUlwhE2FBwxw4BwqEGdw46wbS1LwTwNwLweq1Iwqo4eEgwro7SmEb8uwm85K0UE62&__csr=gqFr4WNnsLimKBOtfTahrQINYB5G8yaG9yV8Gm498O4oSiiFkcABK9CGaV8C58RwwAxqmiawkUohErxC1dAwBy8iwiqyqwhU5m26U98sx60jm8Bg6h01u67E06yi0adw1yW0c7w1MK0kuU03vkt08G04kE0AC09-w7uwrU1GA1Yo0HK04g80SS1KxNw20o0jAw5OAo0P-02Pz802Zu03Ly3Dhkl6w2eC0NE0gmw0yCw6tyo0aO8Bw2l81zUnpUG&__hsdp=hVhPZnsdNc5GDzbQ8wk6Gl8A-S7KeQl4gbAcvZk9y8eQdJXci6p84u1lwaacBy89E5q2C1Dw4fg59wLy83c82217w64w8u0yo0ym04O83fw2-U34wl83YwVwk82Iw3F81gU1Bo&__hblp=0uU2lwaW1eyUkV85i7o560zVU26wFwm40qe0-o1P827w8C6o0wK04O84e0yU0LK0Bk2S1kwfO36u58pxqawiE660_80yO1Wwbai48a8f8kwXwUw4ww&__sjsp=hVhPZnsdNcbiMwFUOZ2851GBi9fJxXzJ5h42V37_l1a3J15U9V82twaacBy89E1-41ioe83c82217w64w&__comet_req=15&lsd=AVq0e4Glnac&jazoest=2950&__spin_r=1025011720&__spin_b=trunk&__spin_t=1753207678&__crn=comet.fbweb.CometWatchSearchRoute&fb_api_caller_class=RelayModern&fb_api_req_friendly_name=SearchCometResultsPaginatedResultsQuery&variables=%7B%22allow_streaming%22%3Afalse%2C%22args%22%3A%7B%22callsite%22%3A%22comet%3Awatch_search%22%2C%22config%22%3A%7B%22exact_match%22%3Afalse%2C%22high_confidence_config%22%3Anull%2C%22intercept_config%22%3Anull%2C%22sts_disambiguation%22%3Anull%2C%22watch_config%22%3Anull%7D%2C%22context%22%3A%7B%22bsid%22%3A%2294d4e363-7db4-44e6-af68-cce2ff5034bb%22%2C%22tsid%22%3Anull%7D%2C%22experience%22%3A%7B%22client_defined_experiences%22%3A%5B%22ADS_PARALLEL_FETCH%22%5D%2C%22encoded_server_defined_params%22%3Anull%2C%22fbid%22%3Anull%2C%22type%22%3A%22WATCH_TAB_GLOBAL%22%7D%2C%22filters%22%3A{filters_encoded}%2C%22text%22%3A%22{keyword_encoded}%22%7D%2C%22count%22%3A5%2C%22cursor%22%3A%22AbrEic2g5fjI9wHwz6Mzve4uN4BGTw3gSapjPV_g9umdXT4wgKMeT4iwhSJiyZGinp7ZxglbqA2kmUJ_OhvYA4yr9BdFo9MW77hBOyQzpDaqVNshMUM05KV2vZoKkf22aQFECOQn-3TWlzOriuHMFXK3flUNVpj2DJl69_HNhEgbRkixC-uQ5CE9sVQbwka2EHZW5x3DNLp3WPfm-2OtzJqmOZZpUgDVoHRC66BNzpwy_zeltKKkgKIvGGUOwqGRrFvDbCDyWhYThy25twSGIkSWcM66xP-gpc7x-dccDDn5MIygBkI44ggPQBa5GQeBVEMNfRAWWjnz1RUP8XYaIoaTcxfk55Zv75RXkZRjkF7IflPk4B6p7j06TYpEM5DjnA_NxPpzQ7JKM-SbaET1Hz4R4Wh8Ha5EYrE3edUGGB0sc2EvHVFdk2tZZ7QbS40_BuappgfVKrj8GOo-P7Z_X5p3lBAGN19G55KtgOtuw_V0bekgwGv_sxPphRu771KqwIl8Xw5NR53xqncVgnYguCkiQb3ArFtaWQZygfnPLwqcmMbNoJQBCVQ6VsConHASP9-KrO1F3o7j7vILqFfrnGXHGNl9OFo_CjX8jJe5RM1YNFvn5ztMjdtwHK022ZiBvrFBjWjowXSNKTYI9uODsM14FlC8wP77prfQuW2h5QN9NANgQrQFeuKZXuukloBRTYuzdGGaOgqrHAoN14TLxN0Ak2x2NyhmqJ4hS4NYFB42YC2rxOh_tJ0Zf73xSSGIJIBw2GS-VqrCHGf25rpJ4QAPx02956716A6RNiA2sdZN3CKEy9VaIh8ilL5Rv2QZdL_1kWTsx3wUz5pdCWQV-xwCrFgN7hdKrBYPSfO4p3VEYx-p-cmTjK2TGOJJ1pvAWLJbuP6QxlyBBKqqkgM2QRKe0Swa6uH09L2p-7zBIN_7P7WcVM5hinGlWtJ7c9Vq_p-O8i_OLNLSeFOL62bWBjt4hlcU_44mIz1yYzYIGstLZ0_dmu_A0Qn9hpAbXbCRzcKmJYgDaTt9LvL8j_bQ9GjYjnnVHNZ22xpJv3W6LHAW7cBVFtN5P2g2Tjo1t6vovm3GgugdBckyMoiwtNxeQfUZlTrslT-urIto3NCLiD2P121zv0ZY-Rn-BqiHZvKv5r5HzqVppz9upWhSPtLUf0_hIw1yQlQI75xiBYnf4zojqg-gKy3A3rOo_sx62xpnZMx_nP2JoQSAe5dh0vBnncT-B-doXbgPwhIoo7CQtouMV1PimrjhlWHSsec9sThTBqqBke8Xg7ZRLOnKvuGXumzD1ScI0p67Of9dpcsKg7Xu4Pk5mppFy8P8vlhbCW4FN62f1K2qGjlOFjRYDaZ9iAfJ6UaMRPkKdeh-LjeK7trDE1Sh7VUcry2cAlIDo42Uec0AH49WeSL3d2TJ5d8M0-6fD0kLFpYDDRxyPTdxJJIBpmP1odN9ZC5LoL3jUWx5qsquo5PA21pu2FJvRS3f3iDthOljSEJQHmm12m6C8sbRqwcUYKKwB-qcIoeHCCGVHAMd5idV6IZNO0TYKm77n5CjHNioYlKppUCysPTku2TPjs5fxTEM8sEKlwezaACHOzQ%22%2C%22feedLocation%22%3A%22SEARCH%22%2C%22feedbackSource%22%3A23%2C%22fetch_filters%22%3Atrue%2C%22focusCommentID%22%3Anull%2C%22locale%22%3Anull%2C%22privacySelectorRenderLocation%22%3A%22COMET_STREAM%22%2C%22renderLocation%22%3A%22search_results_page%22%2C%22scale%22%3A1%2C%22stream_initial_count%22%3A0%2C%22useDefaultActor%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsWorkUserrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_deprecate_short_form_video_context_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FeedDeepDiveTopicPillThreadViewEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_enable_view_dubbed_audio_type_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider%22%3Afalse%2C%22__relay_internal__pv__WorkCometIsEmployeeGKProviderrelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsMergQAPollsrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsMediaFooter_comet_enable_reels_ads_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIShareActionMigrationrelayprovider%22%3Atrue%2C%22__relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsIFUTileContent_reelsIFUPlayOnHoverrelayprovider%22%3Afalse%7D&server_timestamps=true&doc_id=9640490156052538'
+        #  payload = f'av=0&__aaid=0&__user=0&__a=1&__req=a&__hs=20291.HYP%3Acomet_loggedout_pkg.2.1...0&dpr=1&__ccg=EXCELLENT&__rev=1025011720&__s=tuo5p9%3Au1n4cw%3Aqal427&__hsi=7529969641645841789&__dyn=7xeUmwlEnwn8K2Wmh0no6u5U4e0yoW3q32360CEbo19oe8hw2nVE4W0qa0FE2awpUO0n24oaEd82lwv89k2C1Fwc60D85m1mzXwae4UaEW0LobrwmE2eUlwhE2FBwxw4BwqEGdw46wbS1LwTwNwLweq1Iwqo4eEgwro7SmEb8uwm85K0UE62&__csr=gqFr4WNnsLimKBOtfTahrQINYB5G8yaG9yV8Gm498O4oSiiFkcABK9CGaV8C58RwwAxqmiawkUohErxC1dAwBy8iwiqyqwhU5m26U98sx60jm8Bg6h01u67E06yi0adw1yW0c7w1MK0kuU03vkt08G04kE0AC09-w7uwrU1GA1Yo0HK04g80SS1KxNw20o0jAw5OAo0P-02Pz802Zu03Ly3Dhkl6w2eC0NE0gmw0yCw6tyo0aO8Bw2l81zUnpUG&__hsdp=hVhPZnsdNc5GDzbQ8wk6Gl8A-S7KeQl4gbAcvZk9y8eQdJXci6p84u1lwaacBy89E5q2C1Dw4fg59wLy83c82217w64w8u0yo0ym04O83fw2-U34wl83YwVwk82Iw3F81gU1Bo&__hblp=0uU2lwaW1eyUkV85i7o560zVU26wFwm40qe0-o1P827w8C6o0wK04O84e0yU0LK0Bk2S1kwfO36u58pxqawiE660_80yO1Wwbai48a8f8kwXwUw4ww&__sjsp=hVhPZnsdNcbiMwFUOZ2851GBi9fJxXzJ5h42V37_l1a3J15U9V82twaacBy89E1-41ioe83c82217w64w&__comet_req=15&lsd=AVq0e4Glnac&jazoest=2950&__spin_r=1025011720&__spin_b=trunk&__spin_t=1753207678&__crn=comet.fbweb.CometWatchSearchRoute&fb_api_caller_class=RelayModern&fb_api_req_friendly_name=SearchCometResultsPaginatedResultsQuery&'\
+        # f'variables=%7B%22allow_streaming%22%3Afalse%2C%22args%22%3A%7B%22callsite%22%3A%22comet%3Awatch_search%22%2C%22config%22%3A%7B%22exact_match%22%3Afalse%2C%22high_confidence_config%22%3Anull%2C%22intercept_config%22%3Anull%2C%22sts_disambiguation%22%3Anull%2C%22watch_config%22%3Anull%7D%2C%22context%22%3A%7B%22bsid%22%3A%2294d4e363-7db4-44e6-af68-cce2ff5034bb%22%2C%22tsid%22%3Anull%7D%2C%22experience%22%3A%7B%22client_defined_experiences%22%3A%5B%22ADS_PARALLEL_FETCH%22%5D%2C%22encoded_server_defined_params%22%3Anull%2C%22fbid%22%3Anull%2C%22type%22%3A%22WATCH_TAB_GLOBAL%22%7D%2C' \
+        # f'%22filters%22%3A%5B%22%7B%5C%22name%5C%22%3A%5C%22videos_sort_by%5C%22%2C%5C%22args%5C%22%3A%5C%22Most%20Recent%5C%22%7D%22%2C%22%7B%5C%22name%5C%22%3A%5C%22creation_time%5C%22%2C%5C%22args%5C%22%3A%5C%22%7B%5C%5C%5C%22start_year%5C%5C%5C%22%3A%5C%5C%5C%222025%5C%5C%5C%22%2C%5C%5C%5C%22start_month%5C%5C%5C%22%3A%5C%5C%5C%222025-07%5C%5C%5C%22%2C%5C%5C%5C%22end_year%5C%5C%5C%22%3A%5C%5C%5C%222025%5C%5C%5C%22%2C%5C%5C%5C%22end_month%5C%5C%5C%22%3A%5C%5C%5C%222025-07%5C%5C%5C%22%2C%5C%5C%5C%22start_day%5C%5C%5C%22%3A%5C%5C%5C%222025-07-{start_day}%5C%5C%5C%22%2C%5C%5C%5C%22end_day%5C%5C%5C%22%3A%5C%5C%5C%222025-07-{end_day}%5C%5C%5C%22%7D%5C%22%7D%22%5D%'\
+        # f'%2C%22text%22%3A%22{keyword_encoded}%22%7D%2C%22count%22%3A5%2C%22cursor%22%3A%22AbrEic2g5fjI9wHwz6Mzve4uN4BGTw3gSapjPV_g9umdXT4wgKMeT4iwhSJiyZGinp7ZxglbqA2kmUJ_OhvYA4yr9BdFo9MW77hBOyQzpDaqVNshMUM05KV2vZoKkf22aQFECOQn-3TWlzOriuHMFXK3flUNVpj2DJl69_HNhEgbRkixC-uQ5CE9sVQbwka2EHZW5x3DNLp3WPfm-2OtzJqmOZZpUgDVoHRC66BNzpwy_zeltKKkgKIvGGUOwqGRrFvDbCDyWhYThy25twSGIkSWcM66xP-gpc7x-dccDDn5MIygBkI44ggPQBa5GQeBVEMNfRAWWjnz1RUP8XYaIoaTcxfk55Zv75RXkZRjkF7IflPk4B6p7j06TYpEM5DjnA_NxPpzQ7JKM-SbaET1Hz4R4Wh8Ha5EYrE3edUGGB0sc2EvHVFdk2tZZ7QbS40_BuappgfVKrj8GOo-P7Z_X5p3lBAGN19G55KtgOtuw_V0bekgwGv_sxPphRu771KqwIl8Xw5NR53xqncVgnYguCkiQb3ArFtaWQZygfnPLwqcmMbNoJQBCVQ6VsConHASP9-KrO1F3o7j7vILqFfrnGXHGNl9OFo_CjX8jJe5RM1YNFvn5ztMjdtwHK022ZiBvrFBjWjowXSNKTYI9uODsM14FlC8wP77prfQuW2h5QN9NANgQrQFeuKZXuukloBRTYuzdGGaOgqrHAoN14TLxN0Ak2x2NyhmqJ4hS4NYFB42YC2rxOh_tJ0Zf73xSSGIJIBw2GS-VqrCHGf25rpJ4QAPx02956716A6RNiA2sdZN3CKEy9VaIh8ilL5Rv2QZdL_1kWTsx3wUz5pdCWQV-xwCrFgN7hdKrBYPSfO4p3VEYx-p-cmTjK2TGOJJ1pvAWLJbuP6QxlyBBKqqkgM2QRKe0Swa6uH09L2p-7zBIN_7P7WcVM5hinGlWtJ7c9Vq_p-O8i_OLNLSeFOL62bWBjt4hlcU_44mIz1yYzYIGstLZ0_dmu_A0Qn9hpAbXbCRzcKmJYgDaTt9LvL8j_bQ9GjYjnnVHNZ22xpJv3W6LHAW7cBVFtN5P2g2Tjo1t6vovm3GgugdBckyMoiwtNxeQfUZlTrslT-urIto3NCLiD2P121zv0ZY-Rn-BqiHZvKv5r5HzqVppz9upWhSPtLUf0_hIw1yQlQI75xiBYnf4zojqg-gKy3A3rOo_sx62xpnZMx_nP2JoQSAe5dh0vBnncT-B-doXbgPwhIoo7CQtouMV1PimrjhlWHSsec9sThTBqqBke8Xg7ZRLOnKvuGXumzD1ScI0p67Of9dpcsKg7Xu4Pk5mppFy8P8vlhbCW4FN62f1K2qGjlOFjRYDaZ9iAfJ6UaMRPkKdeh-LjeK7trDE1Sh7VUcry2cAlIDo42Uec0AH49WeSL3d2TJ5d8M0-6fD0kLFpYDDRxyPTdxJJIBpmP1odN9ZC5LoL3jUWx5qsquo5PA21pu2FJvRS3f3iDthOljSEJQHmm12m6C8sbRqwcUYKKwB-qcIoeHCCGVHAMd5idV6IZNO0TYKm77n5CjHNioYlKppUCysPTku2TPjs5fxTEM8sEKlwezaACHOzQ%22%2C%22feedLocation%22%3A%22SEARCH%22%2C%22feedbackSource%22%3A23%2C%22fetch_filters%22%3Atrue%2C%22focusCommentID%22%3Anull%2C%22locale%22%3Anull%2C%22privacySelectorRenderLocation%22%3A%22COMET_STREAM%22%2C%22renderLocation%22%3A%22search_results_page%22%2C%22scale%22%3A1%2C%22stream_initial_count%22%3A0%2C%22useDefaultActor%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsWorkUserrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_deprecate_short_form_video_context_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FeedDeepDiveTopicPillThreadViewEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_enable_view_dubbed_audio_type_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider%22%3Afalse%2C%22__relay_internal__pv__WorkCometIsEmployeeGKProviderrelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsMergQAPollsrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsMediaFooter_comet_enable_reels_ads_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIShareActionMigrationrelayprovider%22%3Atrue%2C%22__relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsIFUTileContent_reelsIFUPlayOnHoverrelayprovider%22%3Afalse%7D&server_timestamps=true&doc_id=24030724856591072'
+        
+        #payload = f'av=0&__aaid=0&__user=0&__a=1&__req=a&__hs=20291.HYP%3Acomet_loggedout_pkg.2.1...0&dpr=1&__ccg=EXCELLENT&__rev=1025011720&__s=tuo5p9%3Au1n4cw%3Aqal427&__hsi=7529969641645841789&__dyn=7xeUmwlEnwn8K2Wmh0no6u5U4e0yoW3q32360CEbo19oe8hw2nVE4W0qa0FE2awpUO0n24oaEd82lwv89k2C1Fwc60D85m1mzXwae4UaEW0LobrwmE2eUlwhE2FBwxw4BwqEGdw46wbS1LwTwNwLweq1Iwqo4eEgwro7SmEb8uwm85K0UE62&__csr=gqFr4WNnsLimKBOtfTahrQINYB5G8yaG9yV8Gm498O4oSiiFkcABK9CGaV8C58RwwAxqmiawkUohErxC1dAwBy8iwiqyqwhU5m26U98sx60jm8Bg6h01u67E06yi0adw1yW0c7w1MK0kuU03vkt08G04kE0AC09-w7uwrU1GA1Yo0HK04g80SS1KxNw20o0jAw5OAo0P-02Pz802Zu03Ly3Dhkl6w2eC0NE0gmw0yCw6tyo0aO8Bw2l81zUnpUG&__hsdp=hVhPZnsdNc5GDzbQ8wk6Gl8A-S7KeQl4gbAcvZk9y8eQdJXci6p84u1lwaacBy89E5q2C1Dw4fg59wLy83c82217w64w8u0yo0ym04O83fw2-U34wl83YwVwk82Iw3F81gU1Bo&__hblp=0uU2lwaW1eyUkV85i7o560zVU26wFwm40qe0-o1P827w8C6o0wK04O84e0yU0LK0Bk2S1kwfO36u58pxqawiE660_80yO1Wwbai48a8f8kwXwUw4ww&__sjsp=hVhPZnsdNcbiMwFUOZ2851GBi9fJxXzJ5h42V37_l1a3J15U9V82twaacBy89E1-41ioe83c82217w64w&__comet_req=15&lsd=AVq0e4Glnac&jazoest=2950&__spin_r=1025011720&__spin_b=trunk&__spin_t=1753207678&__crn=comet.fbweb.CometWatchSearchRoute&fb_api_caller_class=RelayModern&fb_api_req_friendly_name=SearchCometResultsPaginatedResultsQuery&variables=%7B%22allow_streaming%22%3Afalse%2C%22args%22%3A%7B%22callsite%22%3A%22comet%3Awatch_search%22%2C%22config%22%3A%7B%22exact_match%22%3Afalse%2C%22high_confidence_config%22%3Anull%2C%22intercept_config%22%3Anull%2C%22sts_disambiguation%22%3Anull%2C%22watch_config%22%3Anull%7D%2C%22context%22%3A%7B%22bsid%22%3A%2294d4e363-7db4-44e6-af68-cce2ff5034bb%22%2C%22tsid%22%3Anull%7D%2C%22experience%22%3A%7B%22client_defined_experiences%22%3A%5B%22ADS_PARALLEL_FETCH%22%5D%2C%22encoded_server_defined_params%22%3Anull%2C%22fbid%22%3Anull%2C%22type%22%3A%22WATCH_TAB_GLOBAL%22%7D%2C%22filters%22%3A{filters_encoded}%2C%22text%22%3A%22{keyword_encoded}%22%7D%2C%22count%22%3A5%2C%22cursor%22%3A%22AbrEic2g5fjI9wHwz6Mzve4uN4BGTw3gSapjPV_g9umdXT4wgKMeT4iwhSJiyZGinp7ZxglbqA2kmUJ_OhvYA4yr9BdFo9MW77hBOyQzpDaqVNshMUM05KV2vZoKkf22aQFECOQn-3TWlzOriuHMFXK3flUNVpj2DJl69_HNhEgbRkixC-uQ5CE9sVQbwka2EHZW5x3DNLp3WPfm-2OtzJqmOZZpUgDVoHRC66BNzpwy_zeltKKkgKIvGGUOwqGRrFvDbCDyWhYThy25twSGIkSWcM66xP-gpc7x-dccDDn5MIygBkI44ggPQBa5GQeBVEMNfRAWWjnz1RUP8XYaIoaTcxfk55Zv75RXkZRjkF7IflPk4B6p7j06TYpEM5DjnA_NxPpzQ7JKM-SbaET1Hz4R4Wh8Ha5EYrE3edUGGB0sc2EvHVFdk2tZZ7QbS40_BuappgfVKrj8GOo-P7Z_X5p3lBAGN19G55KtgOtuw_V0bekgwGv_sxPphRu771KqwIl8Xw5NR53xqncVgnYguCkiQb3ArFtaWQZygfnPLwqcmMbNoJQBCVQ6VsConHASP9-KrO1F3o7j7vILqFfrnGXHGNl9OFo_CjX8jJe5RM1YNFvn5ztMjdtwHK022ZiBvrFBjWjowXSNKTYI9uODsM14FlC8wP77prfQuW2h5QN9NANgQrQFeuKZXuukloBRTYuzdGGaOgqrHAoN14TLxN0Ak2x2NyhmqJ4hS4NYFB42YC2rxOh_tJ0Zf73xSSGIJIBw2GS-VqrCHGf25rpJ4QAPx02956716A6RNiA2sdZN3CKEy9VaIh8ilL5Rv2QZdL_1kWTsx3wUz5pdCWQV-xwCrFgN7hdKrBYPSfO4p3VEYx-p-cmTjK2TGOJJ1pvAWLJbuP6QxlyBBKqqkgM2QRKe0Swa6uH09L2p-7zBIN_7P7WcVM5hinGlWtJ7c9Vq_p-O8i_OLNLSeFOL62bWBjt4hlcU_44mIz1yYzYIGstLZ0_dmu_A0Qn9hpAbXbCRzcKmJYgDaTt9LvL8j_bQ9GjYjnnVHNZ22xpJv3W6LHAW7cBVFtN5P2g2Tjo1t6vovm3GgugdBckyMoiwtNxeQfUZlTrslT-urIto3NCLiD2P121zv0ZY-Rn-BqiHZvKv5r5HzqVppz9upWhSPtLUf0_hIw1yQlQI75xiBYnf4zojqg-gKy3A3rOo_sx62xpnZMx_nP2JoQSAe5dh0vBnncT-B-doXbgPwhIoo7CQtouMV1PimrjhlWHSsec9sThTBqqBke8Xg7ZRLOnKvuGXumzD1ScI0p67Of9dpcsKg7Xu4Pk5mppFy8P8vlhbCW4FN62f1K2qGjlOFjRYDaZ9iAfJ6UaMRPkKdeh-LjeK7trDE1Sh7VUcry2cAlIDo42Uec0AH49WeSL3d2TJ5d8M0-6fD0kLFpYDDRxyPTdxJJIBpmP1odN9ZC5LoL3jUWx5qsquo5PA21pu2FJvRS3f3iDthOljSEJQHmm12m6C8sbRqwcUYKKwB-qcIoeHCCGVHAMd5idV6IZNO0TYKm77n5CjHNioYlKppUCysPTku2TPjs5fxTEM8sEKlwezaACHOzQ%22%2C%22feedLocation%22%3A%22SEARCH%22%2C%22feedbackSource%22%3A23%2C%22fetch_filters%22%3Atrue%2C%22focusCommentID%22%3Anull%2C%22locale%22%3Anull%2C%22privacySelectorRenderLocation%22%3A%22COMET_STREAM%22%2C%22renderLocation%22%3A%22search_results_page%22%2C%22scale%22%3A1%2C%22stream_initial_count%22%3A0%2C%22useDefaultActor%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsWorkUserrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_deprecate_short_form_video_context_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FeedDeepDiveTopicPillThreadViewEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_enable_view_dubbed_audio_type_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider%22%3Afalse%2C%22__relay_internal__pv__WorkCometIsEmployeeGKProviderrelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsMergQAPollsrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsMediaFooter_comet_enable_reels_ads_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIShareActionMigrationrelayprovider%22%3Atrue%2C%22__relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsIFUTileContent_reelsIFUPlayOnHoverrelayprovider%22%3Afalse%7D&server_timestamps=true&doc_id=24030724856591072'
+        payload = 'av=0&__aaid=0&__user=0&__a=1&fb_api_req_friendly_name=SearchCometResultsPaginatedResultsQuery&variables=%7B%22allow_streaming%22%3Afalse%2C%22args%22%3A%7B%22callsite%22%3A%22comet%3Awatch_search%22%2C%22config%22%3A%7B%22exact_match%22%3Afalse%2C%22high_confidence_config%22%3Anull%2C%22intercept_config%22%3Anull%2C%22sts_disambiguation%22%3Anull%2C%22watch_config%22%3Anull%7D%2C%22context%22%3A%7B%22bsid%22%3A%2298bff3d0-ce63-4197-bccb-ef9b2efdc2a7%22%2C%22tsid%22%3Anull%7D%2C%22experience%22%3A%7B%22client_defined_experiences%22%3A%5B%22ADS_PARALLEL_FETCH%22%5D%2C%22encoded_server_defined_params%22%3Anull%2C%22fbid%22%3Anull%2C%22type%22%3A%22WATCH_TAB_GLOBAL%22%7D%2C%22filters%22%3A' +filters_encoded + \
+        '%2C%22text%22%3A%22v%C5%A9%20tr%E1%BB%A5%20%C4%91%C6%B0a%20tin%22%7D%2C%22count%22%3A5%2C%22cursor%22%3A%22AbrNCL6qRdewSfExHNnWMH4EP4LNDpWwCROV6kQsqmSuxR-F6zWNN2BCYpWpTiXocKOwJx2qHcVSfu9Hci609zoAfDtFjDEGUhYuRd8D6PCHIe0N4O64MlJwR-rZSI4ii4vYnxVcq6Gr5P2iw0cOsIYt0XbvWlMdoNAsygaOqNdvw0d0hUl3AX6iVboUnBwKw4Tn_Q9uYWOZ5cjafstXP9pjaffMKC8Jp5WqnePRklMyxOP-yOXa-jY8gOaES0G0gheG0hkHEf_eCFD7BdfFpgOPuZ_gNLqeGQiFsUlwp8o_-9uUH6_x1IUZHGppC2QXZlubydXEXpOvXPWziYkIMqHhyMfO3urhXK_dhqNtc74yxp6NcemxvcwrN4CjPIDj61MGmW5rZNv0dMwbqd_WqCQL6LWCXkg9JHMuVNUsly-_DW2GfpJEr-oO7vegATbPtBUMYH-fe6oDT6Ym58kZJX45gFnOgqiLZG-Nxj8RQs6sxFA4OXX2pzh4TPyXy2bEXg7pFEhL-d-nw6FkslB0ZtAaAybuf7hx7Z46mBsFSFyBwFdE9uYYlfCx3OlvB-fLihjIH8k5Hzcm52R1jOcmHCiQnaN4e0TNNBzRwsGkRSTKbCXkumcDryOJwR1SUP3nQ5PghFd7T4s3MidbF1_bUOUf77ErAUD-TFEAYLKT81Nsfg9Voqns4eBGyxL1frjmuVuAocbPPQ_UPMvXajt5wVTYXAj0UdINZVtK58ZwqqOl74s39z_loYWfzkFkPKqfO_pphT8pX_XbSVsf-CPwz6Q4SQSXmDD4uwKcQ7EHv4TW4KKVO1LM7Jj4d9_AgHOwBiXn6d-2Bo-EEgK_ZFPriCqSwpwEHuRoY0xtepiNPkR2Gkja9bgt7VjW0sUT4ndbyDbdr13NDeIdPxBbM6U-9MA37t4TEhs_4WZUHtyUF5NzimOX-87_GlZtgSvme-Amm3smrTtaxrcCm4P5V5sCXO7nzOc0oTTFTthrKAs9xKSntNohhZw4i5b84eN1mZVb2TsYzNyycxFTIcAlvOlbbpQeTAQh22I4y2R83ehVRKcEfUjpvpE4dEEkidL6FTgb76D5lLD23h1TWgs-4n2JgD8MWbbf1OmBJhy4hJrnLKKuYoqhtyWIB2EpvicyneeIx38iY0-UC7MNukcX5tj8GiNMdg9KXHLGa0G_Q7uLSFsvA7Bic2ziTKt2BG4YP12zMGl1Ajf3_edPTdKdlo56SJh96UDmQ7QSCbGs821ajl8-pofZLm40gfI8rugNZjjcLTYNC-3KkoEuYYz2SG8Be-9GIH8nOmz9jQxdulYXSGLfHzMo0B479sSc0SduD-Grna31hHsxYYclYW1ufWlHsMB4WZDhpnSSkKslFxJV1TVvyvqcacfzGmHizzVD2HBkAhUUrusf_TFtZJ1eh3hZIbBnT0Qpdu7duQxBqjAbBbY8nO591rJYoNsPqPiFyWTANJWkgkgyppE2ZpaWOCoxtv6RjM2xzPrKWl5N91Ma0mC2fGzRTizY4oT6ohpB89YTMmsa35BfwSUcx9_YgCzreLGI88pNWSNqOY33U7x0gLAq8SfaiZ9oHIFmoyQwqCiBkHY%22%2C%22feedLocation%22%3A%22SEARCH%22%2C%22feedbackSource%22%3A23%2C%22fetch_filters%22%3Atrue%2C%22focusCommentID%22%3Anull%2C%22locale%22%3Anull%2C%22privacySelectorRenderLocation%22%3A%22COMET_STREAM%22%2C%22renderLocation%22%3A%22search_results_page%22%2C%22scale%22%3A1%2C%22stream_initial_count%22%3A0%2C%22useDefaultActor%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeAdIdFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__GHLShouldChangeSponsoredDataFieldNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsWorkUserrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_deprecate_short_form_video_context_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FeedDeepDiveTopicPillThreadViewEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReels_enable_view_dubbed_audio_type_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometImmersivePhotoCanUserDisable3DMotionrelayprovider%22%3Afalse%2C%22__relay_internal__pv__WorkCometIsEmployeeGKProviderrelayprovider%22%3Afalse%2C%22__relay_internal__pv__IsMergQAPollsrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsMediaFooter_comet_enable_reels_ads_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIReactionsEnableShortNamerelayprovider%22%3Afalse%2C%22__relay_internal__pv__CometUFIShareActionMigrationrelayprovider%22%3Atrue%2C%22__relay_internal__pv__CometUFI_dedicated_comment_routable_dialog_gkrelayprovider%22%3Afalse%2C%22__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider%22%3Afalse%2C%22__relay_internal__pv__FBReelsIFUTileContent_reelsIFUPlayOnHoverrelayprovider%22%3Afalse%7D&doc_id=24030724856591072'
         headers = {
         'accept': '*/*',
         'accept-language': 'vi',
@@ -1053,12 +1291,12 @@ async def get_request_data_watchfb( keyword: str )  -> list[CrawlerPostItem]:
         'x-asbd-id': '359341',
         'x-fb-friendly-name': 'SearchCometResultsPaginatedResultsQuery',
         'x-fb-lsd': 'AVq0e4Glnac',
-        'Cookie': 'datr=FdJ_aJRXUK4xxwe62D4zWYIc; sb=L9J_aCrXDRrWbbJ9XGJdqqw3; m_pixel_ratio=3; fr=0TWbbf10IwFprPFwT..Bof9Iv..AAA.0.0.Bof9LE.AWdNao4BneQxmeAHpyEUtRzNwMI; dpr=1; wd=1247x1284; fr=1koWPhri0Vrme8PQo.AWfRnI-1b4Yi3pk2MOQkBurRyNVqWV86ThLJAEKd1IOen0RTV5A.Bof8oe..AAA.0.0.Bof8oe.AWc4_n_WhpEpHwJm2DSrtApsGeI'
+        'Cookie': 'datr=sv-BaA0_-TySrWP5zX-6LmXL; sb=sv-BaCIBDhgYr9BRryLqZ7iz; fr=0oKSN20zHA5Xk5Pw9..Bogf-y..AAA.0.0.Bogf-5.AWc85SdtsqXirkkvCrddMeR64pc; ps_l=1; ps_n=1; wd=1060x927'
         }
         #print(payload)
         response = requests.post(url=url, headers=headers, data=payload)
         if response.status_code != 200:  # Raise an error for bad responses
-            print(f"[ERROR] Failed to fetch data from Instagram: {response.status_code}")
+            print(f"[ERROR] Failed to fetch data from fbwatch: {response.status_code}")
             return [],str(response.status_code)
         data_res = json.loads(response.text)
         #print(data_res)
